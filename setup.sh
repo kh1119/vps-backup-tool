@@ -41,6 +41,15 @@ else
     echo "✅ config.yaml already exists"
 fi
 
+# Tạo config_test.yaml từ template nếu chưa có
+if [[ ! -f "config_test.yaml" ]]; then
+    echo "📝 Creating config_test.yaml from template..."
+    cp config_test.yaml.template config_test.yaml
+    echo "⚠️  Please edit config_test.yaml with your VPS details for testing"
+else
+    echo "✅ config_test.yaml already exists"
+fi
+
 # Tạo thư mục cần thiết
 echo "📁 Creating directories..."
 mkdir -p backup_data logs tmp

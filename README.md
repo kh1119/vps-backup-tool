@@ -20,11 +20,12 @@ Tool backup dữ liệu từ VPS với tính năng monitor băng thông real-tim
 git clone https://github.com/your-username/vps-backup-tool.git
 cd vps-backup-tool
 
-# Auto setup
+# Auto setup (tạo config từ templates)
 ./setup.sh
 
 # Edit config với thông tin VPS của bạn
 nano config.yaml
+nano config_test.yaml  # Cho testing
 
 # Test connection
 python3 quick_bandwidth.py
@@ -42,8 +43,12 @@ pip3 install -r requirements.txt
 # Cấp quyền thực thi
 chmod +x *.sh
 
-# Tạo config từ template
+# Tạo config từ templates
 cp config.yaml.template config.yaml
+cp config_test.yaml.template config_test.yaml
+
+# Edit với thông tin VPS của bạn
+nano config.yaml
 ```
 
 ## Cấu hình
@@ -149,11 +154,22 @@ Script sẽ tự động cảnh báo khi:
 ├── backup_with_monitoring.sh   # Script tương tác
 ├── run_backup.sh              # Script backup truyền thống
 ├── setup.sh                   # Auto setup script
-├── config.yaml.template       # Template cấu hình
-├── config_test.yaml          # Config test với ít files
+├── config.yaml.template       # Template cấu hình chính
+├── config_test.yaml.template  # Template cấu hình test
 ├── requirements.txt          # Python dependencies
 ├── README.md                # Tài liệu này
+├── LICENSE                  # MIT License
+├── CHANGELOG.md            # Lịch sử thay đổi
 └── .gitignore              # Git ignore rules
+```
+
+**⚠️ Files không có trong repo (được tạo từ templates):**
+```
+├── config.yaml             # Config thật (tạo từ template)
+├── config_test.yaml       # Config test thật (tạo từ template)
+├── backup_data/           # Dữ liệu backup
+├── logs/                  # Log files
+└── tmp/                   # Temporary files
 ```
 
 ## Troubleshooting

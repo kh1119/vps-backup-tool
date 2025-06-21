@@ -61,10 +61,12 @@ id_ed25519*
 id_ecdsa*
 *.ppk
 
-# Config files with sensitive info
-config.yaml                 # File config thật chứa thông tin nhạy cảm
-config_production.yaml       # Config production
-config_local.yaml           # Config local development
+# Config files with sensitive info - NEVER COMMIT THESE!
+config.yaml                 # File config chính chứa thông tin nhạy cảm
+config_*.yaml               # Tất cả config files với thông tin thật
+config_production.yaml      # Config production
+config_local.yaml          # Config local development
+config_test.yaml           # Config test với thông tin thật
 
 # Temporary files
 *.tmp
