@@ -179,12 +179,26 @@ def chunk_file_list(all_files, cfg):
     chunks = []
     with open(all_files) as f:
         lines = [l.strip() for l in f if l.strip()]
+    
+    # Remove remote_root prefix from paths để tránh duplicate paths
+    remote_root = cfg['remote_root'].rstrip('/')
+    processed_lines = []
+    for line in lines:
+        if line.startswith(remote_root):
+            # Remove remote_root prefix, keeping the relative path
+            relative_path = line[len(remote_root):].lstrip('/')
+            if relative_path:  # Skip empty paths
+                processed_lines.append(relative_path)
+        else:
+            # If line doesn't start with remote_root, keep as is
+            processed_lines.append(line)
+    
     n = cfg['threads']
     for i in range(n):
         chunk_path = os.path.join(cfg['tmp_dir'], f'chunk_{i+1}.txt')
         chunks.append(chunk_path)
         with open(chunk_path, 'w') as out:
-            for idx, line in enumerate(lines):
+            for idx, line in enumerate(processed_lines):
                 if idx % n == i:
                     out.write(line + '\n')
     return chunks
@@ -194,13 +208,17 @@ def rsync_chunk(chunk_path, cfg, idx):
     log_path = os.path.join(cfg['log_dir'], f'chunk_{idx+1}.log')
     os.makedirs(cfg['log_dir'], exist_ok=True)
     ssh_e = f"ssh -i {cfg['ssh_key']} -p {cfg.get('ssh_port', 22)}"
+    
+    # Ensure remote_root ends with / for rsync
+    remote_root = cfg['remote_root'].rstrip('/') + '/'
+    
     cmd = [
         'rsync',
         *cfg['rsync_opts'],
         f"--bwlimit={cfg['bwlimit']}",
         f"--files-from={chunk_path}",
         '-e', ssh_e,
-        f"{cfg['ssh_user']}@{cfg['ssh_host']}:/", cfg['local_root']
+        f"{cfg['ssh_user']}@{cfg['ssh_host']}:{remote_root}", cfg['local_root']
     ]
     with open(log_path, 'w') as logf:
         proc = subprocess.run(cmd, stdout=logf, stderr=subprocess.STDOUT)

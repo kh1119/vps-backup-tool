@@ -114,13 +114,50 @@ fi
 echo "📁 Creating directories..."
 mkdir -p backup_data logs tmp
 
+# Check SSH key permissions
+echo "🔑 Checking SSH key permissions..."
+check_ssh_key_permissions() {
+    local config_file="$1"
+    if [[ -f "$config_file" ]]; then
+        local ssh_key=$(grep "^ssh_key:" "$config_file" | cut -d' ' -f2 | tr -d '"' | tr -d "'")
+        if [[ -n "$ssh_key" && -f "$ssh_key" ]]; then
+            echo "Found SSH key: $ssh_key"
+            local current_perm
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                current_perm=$(stat -f "%A" "$ssh_key" 2>/dev/null || echo "unknown")
+            else
+                current_perm=$(stat -c "%a" "$ssh_key" 2>/dev/null || echo "unknown")
+            fi
+            
+            if [[ "$current_perm" != "600" ]]; then
+                echo "🔧 Fixing SSH key permissions: $ssh_key"
+                chmod 600 "$ssh_key"
+                echo "✅ SSH key permissions set to 600"
+            else
+                echo "✅ SSH key permissions already correct (600)"
+            fi
+        else
+            echo "⚠️  SSH key not found: $ssh_key"
+            echo "   Make sure SSH key exists and run: chmod 600 /path/to/your/key"
+        fi
+    fi
+}
+
+check_ssh_key_permissions "config.yaml"
+check_ssh_key_permissions "config_test.yaml"
+
 echo ""
 echo "🎉 Setup complete!"
 echo ""
 echo "Next steps:"
 echo "1. Edit config.yaml with your VPS connection details"
-echo "2. Make sure your SSH key is properly configured"
+echo "2. Make sure your SSH key has correct permissions (600)"
 echo "3. Test connection: python3 quick_bandwidth.py"
 echo "4. Run backup: ./backup_with_monitoring.sh"
+echo ""
+echo "💡 SSH Key Requirements:"
+echo "   - Must have 600 permissions: chmod 600 /path/to/key"
+echo "   - Use absolute path in config files"
+echo "   - Test SSH connection: ssh -i /path/to/key user@host"
 echo ""
 echo "For help: ./backup_with_monitoring.sh and select option 4"

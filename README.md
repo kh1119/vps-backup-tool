@@ -110,8 +110,8 @@ ssh_port: 22
 ssh_key: /path/to/your/ssh/key
 
 # Thư mục
-remote_root: /home
-local_root: ./backup_data
+remote_root: /home          # Sẽ backup /home/* vào backup_data/* (không tạo backup_data/home/)
+local_root: ./backup_data   # Local destination
 
 # Performance
 threads: 8
@@ -121,6 +121,11 @@ bwlimit: 0  # KB/s limit (0 = unlimited)
 enable_bandwidth_monitoring: true
 monitoring_interval: 10  # giây
 ```
+
+**⚠️ Lưu ý quan trọng về paths:**
+- `remote_root: /home` sẽ backup nội dung `/home/*` vào `backup_data/*`
+- KHÔNG tạo `backup_data/home/` (tránh duplicate paths)
+- Ví dụ: `/home/user/file.txt` → `backup_data/user/file.txt`
 
 ## Sử dụng
 

@@ -51,10 +51,39 @@ fi
 echo "📁 Creating directories..."
 mkdir -p backup_data logs tmp
 
+# Check and fix SSH key permissions
+echo "🔑 Checking SSH key permissions..."
+if [[ -f "config.yaml" ]]; then
+    SSH_KEY=$(grep "^ssh_key:" config.yaml | cut -d' ' -f2 | tr -d '"' | tr -d "'")
+    if [[ -n "$SSH_KEY" && -f "$SSH_KEY" ]]; then
+        echo "Found SSH key: $SSH_KEY"
+        CURRENT_PERM=$(stat -c "%a" "$SSH_KEY" 2>/dev/null || stat -f "%A" "$SSH_KEY" 2>/dev/null || echo "unknown")
+        if [[ "$CURRENT_PERM" != "600" ]]; then
+            echo "🔧 Fixing SSH key permissions: $SSH_KEY"
+            chmod 600 "$SSH_KEY"
+            echo "✅ SSH key permissions set to 600"
+        else
+            echo "✅ SSH key permissions already correct (600)"
+        fi
+    else
+        echo "⚠️  SSH key not found or not specified in config.yaml"
+        echo "   Make sure to set correct ssh_key path and run: chmod 600 /path/to/your/key"
+    fi
+else
+    echo "⚠️  config.yaml not found, SSH key check skipped"
+    echo "   After editing config.yaml, run: chmod 600 /path/to/your/ssh/key"
+fi
+
 echo ""
 echo "🎉 Setup complete for Rocky Linux!"
 echo ""
 echo "Next steps:"
 echo "1. Edit config.yaml: nano config.yaml"
-echo "2. Test: python3 quick_bandwidth.py"
-echo "3. Run: ./backup_with_monitoring.sh"
+echo "2. Set SSH key permissions: chmod 600 /path/to/your/ssh/key"
+echo "3. Test connection: python3 quick_bandwidth.py"
+echo "4. Run backup: ./backup_with_monitoring.sh"
+echo ""
+echo "💡 SSH Key Tips:"
+echo "   - SSH key must have 600 permissions"
+echo "   - Use absolute path in config.yaml"
+echo "   - Test SSH: ssh -i /path/to/key user@host"

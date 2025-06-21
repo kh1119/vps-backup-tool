@@ -5,8 +5,11 @@ ssh_port: 22                    # Cổng SSH
 ssh_key: /path/to/your/ssh/key  # Đường dẫn đến SSH private key
 
 # Thư mục gốc - test với thư mục nhỏ hơn
-remote_root: /etc/ssh           # Thư mục test (ít files)
+remote_root: /etc/ssh           # Thư mục test (ít files) - sẽ được strip khỏi path
 local_root: ./backup_data       # Thư mục lưu backup local
+
+# Ví dụ: nếu remote_root=/etc/ssh và có file /etc/ssh/sshd_config  
+# Kết quả sẽ là: backup_data/sshd_config (KHÔNG phải backup_data/etc/ssh/sshd_config)
 
 # Hiệu năng
 threads: 2                      # Ít threads hơn cho test

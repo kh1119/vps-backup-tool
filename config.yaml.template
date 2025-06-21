@@ -5,8 +5,11 @@ ssh_port: 22                     # Cổng SSH
 ssh_key: /path/to/your/ssh/key   # Đường dẫn đến SSH private key
 
 # Thư mục gốc
-remote_root: /home               # Thư mục cần backup trên VPS
+remote_root: /home               # Thư mục cần backup trên VPS (sẽ được strip khỏi path)
 local_root: ./backup_data        # Thư mục lưu backup local
+
+# Ví dụ: nếu remote_root=/home và có file /home/user/doc.txt
+# Kết quả sẽ là: backup_data/user/doc.txt (KHÔNG phải backup_data/home/user/doc.txt)
 
 # Hiệu năng
 threads: 8                       # Số chunk song song
