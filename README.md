@@ -28,6 +28,18 @@
 - **SSH Key Authentication**: Hỗ trợ SSH private key
 - **No Sensitive Data in Git**: Config files được bảo vệ khỏi git tracking
 
+### 🖥️ **Screen Session Support** ⭐ NEW!
+- **Background Processing**: Backup chạy ngầm với screen sessions
+- **SSH Disconnect Protection**: Backup tiếp tục khi SSH bị ngắt
+- **Session Management**: Tools để quản lý multiple backup sessions
+- **Long-term Backup**: Hỗ trợ backup dài ngày không gián đoạn
+
+### 📅 **Long-term Backup** ⭐ NEW!
+- **Multi-day Support**: Thiết kế cho backup lớn có thể chạy nhiều ngày
+- **Time Estimation**: Ước tính thời gian backup dựa trên data size
+- **Resource Monitoring**: Kiểm tra disk space và network capacity
+- **Enhanced Resilience**: Xử lý lỗi và recovery tốt hơn cho backup dài hạn
+
 ## � Quick Start
 
 ### 📦 **1. Cài đặt**
@@ -83,13 +95,90 @@ python3 test_multi_interface.py config.yaml
 ### 🎯 **4. Chạy backup**
 ```bash
 # Interactive menu (recommended)
-./backup_with_monitoring.sh
+./backup_menu.sh
+
+# Long-term backup (for multi-day operations)
+./long_backup.sh
+
+# Screen-based backup (background processing)
+./auto_backup.sh config.yaml my-backup
 
 # Direct backup with monitoring
 python3 main.py config.yaml
 
-# Standalone bandwidth monitoring
-python3 monitor_bandwidth.py config.yaml monitor 60 5
+# Quick demo of screen functionality
+./demo_screen.sh
+```
+
+## 🖥️ Screen Session Management ⭐ NEW!
+
+Hệ thống backup giờ đây hỗ trợ **screen sessions** cho backup dài hạn:
+
+### **Interactive Menu System:**
+```bash
+# Main menu with all options
+./backup_menu.sh
+
+# Specialized long-term backup menu
+./long_backup.sh
+
+# Quick screen demo
+./demo_screen.sh
+```
+
+### **Screen Session Benefits:**
+- ✅ **SSH Disconnect Protection**: Backup tiếp tục khi SSH bị ngắt
+- ✅ **Background Processing**: Chạy ngầm, không chiếm terminal
+- ✅ **Session Persistence**: Reconnect và tiếp tục theo dõi
+- ✅ **Multiple Sessions**: Chạy nhiều backup cùng lúc
+- ✅ **Resource Monitoring**: Track bandwidth và system resources
+
+### **Screen Commands:**
+```bash
+# Session management via our tools
+./screen_manager.sh start config.yaml my-backup full
+./screen_manager.sh list
+./screen_manager.sh attach my-backup
+./screen_manager.sh stop my-backup
+
+# Direct screen commands
+screen -ls                          # List all sessions
+screen -r vps-backup-my-backup     # Attach to session
+# Ctrl+A, then D                   # Detach (keep running)
+screen -S vps-backup-my-backup -X quit  # Kill session
+```
+
+## 📅 Long-term Backup ⭐ NEW!
+
+Chế độ **Long-term Backup** được thiết kế cho backup lớn có thể chạy **nhiều ngày**:
+
+### **Features:**
+- 🕐 **Time Estimation**: Ước tính thời gian dựa trên kích thước data
+- 💾 **Disk Space Check**: Kiểm tra không gian trống trước khi backup
+- 📡 **Network Stability**: Monitor bandwidth để tránh quá tải
+- 🔧 **Enhanced Error Handling**: Xử lý lỗi tốt hơn cho backup dài
+- 📊 **Progress Tracking**: Theo dõi tiến độ chi tiết
+
+### **Usage:**
+```bash
+# Launch long-term backup menu
+./long_backup.sh
+
+# Features include:
+# - Pre-backup system checks
+# - Time and space estimation  
+# - Optimized screen session settings
+# - Enhanced monitoring and alerts
+```
+
+### **Best Practices for Long-term Backup:**
+```bash
+✅ Use meaningful session names with dates
+✅ Monitor bandwidth to avoid network issues  
+✅ Check disk space regularly
+✅ Use screen detach (Ctrl+A, D) never Ctrl+C
+✅ Check logs periodically: tail -f logs/backup_*.log
+✅ Keep SSH connection alive or use screen sessions
 ```
 
 ## � Multi-Interface Monitoring ⭐ NEW!
@@ -129,15 +218,17 @@ Tool giờ đây hỗ trợ **monitoring tất cả network interfaces** trên V
 
 | Tool | Description | Usage |
 |------|-------------|-------|
+| **backup_menu.sh** | Main interactive menu | `./backup_menu.sh` |
+| **long_backup.sh** | Long-term backup specialized menu | `./long_backup.sh` |
+| **screen_manager.sh** | Screen session management | `./screen_manager.sh start config.yaml session-name` |
+| **auto_backup.sh** | Quick backup launcher with screen | `./auto_backup.sh config.yaml session-name` |
+| **demo_screen.sh** | Screen functionality demo | `./demo_screen.sh` |
 | **main.py** | Core backup script with integrated monitoring | `python3 main.py config.yaml` |
-| **backup_with_monitoring.sh** | Interactive menu script | `./backup_with_monitoring.sh` |
 | **monitor_bandwidth.py** | Standalone bandwidth monitoring | `python3 monitor_bandwidth.py config.yaml monitor 60 5` |
 | **quick_bandwidth.py** | Quick bandwidth check | `python3 quick_bandwidth.py config.yaml` |
 | **test_ssh.sh** | SSH connection and permission test | `./test_ssh.sh config.yaml` |
 | **test_multi_interface.py** | Multi-interface detection test | `python3 test_multi_interface.py config.yaml` |
 | **demo_multi_interface.py** | Demo of monitoring improvements | `python3 demo_multi_interface.py` |
-| **setup.sh** | Auto setup for all platforms | `./setup.sh` |
-| **setup_rocky.sh** | Optimized setup for Rocky Linux | `./setup_rocky.sh` |
 
 ## 🏗️ Project Structure
 

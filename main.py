@@ -7,6 +7,23 @@ import threading
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+def detect_screen_session():
+    """Phát hiện nếu đang chạy trong screen session"""
+    if 'STY' in os.environ:
+        session_info = os.environ['STY']
+        return session_info
+    return None
+
+def print_session_info():
+    """Hiển thị thông tin session nếu đang chạy trong screen"""
+    session = detect_screen_session()
+    if session:
+        print("🖥️  Running in screen session:", session)
+        print("   Detach: Ctrl+A, then D")
+        print("   Attach: screen -r", session)
+        print("=" * 50)
+    return session
+
 # Load configuration
 def load_config(path="config.yaml"):
     with open(path) as f:
@@ -276,6 +293,24 @@ def main():
     import sys
     config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
     cfg = load_config(config_file)
+    
+    print("🚀 VPS Backup Tool - Multi-Interface Monitoring")
+    print("=" * 50)
+    
+    # Hiển thị thông tin screen session nếu có
+    session = print_session_info()
+    
+    print(f"📋 Config: {config_file}")
+    print(f"🖥️  VPS: {cfg['ssh_user']}@{cfg['ssh_host']}:{cfg['ssh_port']}")
+    print(f"📁 Source: {cfg['remote_root']}")
+    print(f"💾 Destination: {cfg['local_root']}")
+    print(f"🧵 Threads: {cfg['threads']}")
+    
+    if session:
+        print(f"🖥️  Screen Session: {session}")
+        print("   💡 This backup will continue running even if you disconnect SSH")
+    
+    print("=" * 50)
     
     # Kiểm tra xem có enable monitoring không
     enable_monitoring = cfg.get('enable_bandwidth_monitoring', True)
