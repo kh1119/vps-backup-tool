@@ -96,3 +96,5 @@ htmlcov/
 local_*
 test_*
 debug_*
+config.yaml
+config_test.yaml
