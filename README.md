@@ -1,240 +1,401 @@
-# VPS Backup To## Quick Start
+# VPS Backup Tool với Multi-Interface Bandwidth Monitoring
 
-### Universal Setup (All platforms)
+> **Production-ready backup tool** cho VPS với real-time bandwidth monitoring và hỗ trợ multiple network interfaces.
+
+[![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-v1.4.0-orange.svg)](CHANGELOG.md)
+
+## 🚀 Tính năng chính
+
+### 💾 **Advanced Backup System**
+- **Parallel Backup**: Backup nhiều chunk đồng thời với rsync
+- **Chunked Transfer**: Chia nhỏ file list để backup hiệu quả
+- **Auto Retry**: Tự động thử lại khi transfer thất bại
+- **Progress Tracking**: Theo dõi tiến độ real-time
+- **Configurable Options**: Tùy chỉnh rsync options và performance
+
+### 📊 **Multi-Interface Bandwidth Monitoring** ⭐ NEW!
+- **Smart Interface Detection**: Tự động phát hiện và monitor tất cả network interfaces
+- **Virtual Interface Filtering**: Loại bỏ interfaces ảo (docker, bridge, tunnel)
+- **Real-time Monitoring**: Hiển thị bandwidth usage của từng interface
+- **Total Bandwidth Calculation**: Tính tổng chính xác từ tất cả interfaces
+- **Visual Status Indicators**: 🟢 Active / ⚫ Inactive interfaces
+- **High Traffic Warnings**: Cảnh báo khi bandwidth quá cao
+
+### 🛡️ **Security & Configuration**
+- **Secure Config Management**: Template system với .gitignore protection
+- **SSH Key Authentication**: Hỗ trợ SSH private key
+- **No Sensitive Data in Git**: Config files được bảo vệ khỏi git tracking
+
+## � Quick Start
+
+### 📦 **1. Cài đặt**
 ```bash
-# Clone repository (HTTPS for public access)
+# Clone repository
 git clone https://github.com/kh1119/vps-backup-tool.git
 cd vps-backup-tool
 
-# Auto setup (detects OS and installs dependencies)
+# Auto setup - phát hiện OS và cài dependencies
 ./setup.sh
 ```
 
-### Rocky Linux / RHEL / CentOS specific
+**Alternative setup options:**
 ```bash
-# For Rocky Linux users (faster setup)
+# Rocky Linux / RHEL / CentOS (optimized)
 ./setup_rocky.sh
-```
 
-### Manual setup for any platform
-```bash
-# Install pip3 first:
-# Rocky/RHEL/CentOS: dnf install python3-pip
-# Debian/Ubuntu: apt install python3-pip  
-# macOS: brew install python3
-
-# Then setup
+# Manual setup (any platform)
 pip3 install PyYAML
 chmod +x *.sh
 cp config.yaml.template config.yaml
 cp config_test.yaml.template config_test.yaml
 ```
 
-### Configure and run
+### ⚙️ **2. Cấu hình**
 ```bash
 # Edit config với thông tin VPS của bạn
 nano config.yaml
-nano config_test.yaml  # Cho testing
 
-# Test connection
-python3 quick_bandwidth.py
-
-# Start backup with monitoring
-./backup_with_monitoring.sh
-```itoring
-
-Tool backup dữ liệu từ VPS với tính năng monitor băng thông real-time.
-
-## Tính năng
-
-- ✅ Backup parallel với rsync
-- ✅ Monitor băng thông real-time trong quá trình backup
-- ✅ Hiển thị download/upload speed
-- ✅ Cảnh báo khi băng thông cao
-- ✅ Retry tự động cho chunks bị lỗi
-- ✅ Logging chi tiết
-- ✅ Script setup tự động
-- ✅ Multiple config templates
-
-## Quick Start
-
-```bash
-# Clone repository (HTTPS for public access)
-git clone https://github.com/kh1119/vps-backup-tool.git
-cd vps-backup-tool
-
-# Auto setup (tạo config từ templates)
-./setup.sh
-
-# Edit config với thông tin VPS của bạn
-nano config.yaml
-nano config_test.yaml  # Cho testing
-
-# Test connection
-python3 quick_bandwidth.py
-
-# Start backup with monitoring
-./backup_with_monitoring.sh
+# Ví dụ config:
+ssh_user: root
+ssh_host: 184.164.80.58
+ssh_port: 1022
+ssh_key: /Users/username/.ssh/vps_key
+remote_root: /home
+local_root: ./backup_data
+threads: 8
+enable_bandwidth_monitoring: true
 ```
 
-> **💡 Clone URLs:**
-> - ✅ **HTTPS** (public): `https://github.com/kh1119/vps-backup-tool.git`
-> - 🔑 **SSH** (for contributors): `git@github.com:kh1119/vps-backup-tool.git`
-
-## Cài đặt thủ công
-
+### 🔍 **3. Test kết nối**
 ```bash
-# Cài đặt dependencies
-pip3 install -r requirements.txt
+# Test SSH connection
+./test_ssh.sh config.yaml
 
-# Cấp quyền thực thi
+# Quick bandwidth check
+python3 quick_bandwidth.py config.yaml
+
+# Test multi-interface detection
+python3 test_multi_interface.py config.yaml
+```
+
+### 🎯 **4. Chạy backup**
+```bash
+# Interactive menu (recommended)
+./backup_with_monitoring.sh
+
+# Direct backup with monitoring
+python3 main.py config.yaml
+
+# Standalone bandwidth monitoring
+python3 monitor_bandwidth.py config.yaml monitor 60 5
+```
+
+## � Multi-Interface Monitoring ⭐ NEW!
+
+Tool giờ đây hỗ trợ **monitoring tất cả network interfaces** trên VPS:
+
+### **Before vs After:**
+```bash
+# ❌ Trước (v1.0):
+[12:34:56] 📊 Total: ⬇️ 50.0 MB/s | ⬆️ 10.0 MB/s
+
+# ✅ Sau (v1.4.0):
+[12:34:56] 📊 Total: ⬇️ 51.0 MB/s | ⬆️ 10.5 MB/s (2/3 active)
+         Active interfaces:
+           eth0: ⬇️ 50.0 MB/s | ⬆️ 10.0 MB/s
+           eth1: ⬇️ 1.0 MB/s | ⬆️ 512.0 KB/s
+         ⚠️  HIGH DOWNLOAD TRAFFIC!
+```
+
+### **Detailed Interface View:**
+```bash
+📊 Total Bandwidth: ⬇️ 51.0 MB/s | ⬆️ 10.5 MB/s  
+🔌 Network Interfaces: 2/3 active
+
+📡 Network Interface Details:
+   🟢 eth0: ⬇️ 50.0 MB/s | ⬆️ 10.0 MB/s ⚠️ HIGH DOWNLOAD
+            Total: ⬇️ 125.50GB | ⬆️ 89.20GB
+   🟢 eth1: ⬇️ 1.0 MB/s | ⬆️ 512.0 KB/s  
+            Total: ⬇️ 25.80GB | ⬆️ 12.40GB
+   ⚫ wlan0: ⬇️ 0.0 B/s | ⬆️ 0.0 B/s
+            Total: ⬇️ 5.20GB | ⬆️ 2.10GB
+
+🏷️  Interface Types: Ethernet: 2, WiFi: 1
+```
+
+## 🛠️ Tools Overview
+
+| Tool | Description | Usage |
+|------|-------------|-------|
+| **main.py** | Core backup script with integrated monitoring | `python3 main.py config.yaml` |
+| **backup_with_monitoring.sh** | Interactive menu script | `./backup_with_monitoring.sh` |
+| **monitor_bandwidth.py** | Standalone bandwidth monitoring | `python3 monitor_bandwidth.py config.yaml monitor 60 5` |
+| **quick_bandwidth.py** | Quick bandwidth check | `python3 quick_bandwidth.py config.yaml` |
+| **test_ssh.sh** | SSH connection and permission test | `./test_ssh.sh config.yaml` |
+| **test_multi_interface.py** | Multi-interface detection test | `python3 test_multi_interface.py config.yaml` |
+| **demo_multi_interface.py** | Demo of monitoring improvements | `python3 demo_multi_interface.py` |
+| **setup.sh** | Auto setup for all platforms | `./setup.sh` |
+| **setup_rocky.sh** | Optimized setup for Rocky Linux | `./setup_rocky.sh` |
+
+## 🏗️ Project Structure
+
+```
+vps-backup-tool/
+├── 🐍 Core Scripts
+│   ├── main.py                     # Main backup script
+│   ├── monitor_bandwidth.py        # Standalone monitoring  
+│   └── quick_bandwidth.py          # Quick bandwidth check
+├── 🔧 Setup & Utilities
+│   ├── setup.sh                    # Universal setup script
+│   ├── setup_rocky.sh              # Rocky Linux setup
+│   ├── backup_with_monitoring.sh   # Interactive menu
+│   └── run_backup.sh               # Backup execution script
+├── 🧪 Testing Tools
+│   ├── test_ssh.sh                 # SSH connection test
+│   ├── test_multi_interface.py     # Interface detection test
+│   └── demo_multi_interface.py     # Demo script
+├── ⚙️ Configuration
+│   ├── config.yaml.template        # Production config template
+│   ├── config_test.yaml.template   # Test config template
+│   ├── config.yaml                 # Your production config (gitignored)
+│   └── config_test.yaml            # Your test config (gitignored)
+├── 📚 Documentation
+│   ├── README.md                   # This file
+│   ├── CHANGELOG.md                # Version history
+│   ├── GITHUB_SETUP.md             # GitHub setup guide
+│   ├── MULTI_INTERFACE_SUMMARY.md  # Multi-interface guide
+│   └── LICENSE                     # MIT License
+├── 📦 Dependencies
+│   ├── requirements.txt            # Python dependencies
+│   └── .gitignore                 # Git ignore rules
+└── 📁 Generated Directories
+    ├── backup_data/                # Local backup storage
+    ├── tmp/                        # Temporary files
+    └── logs/                       # Log files
+```
+
+## 🎯 Use Cases & Scenarios
+
+### **🏢 Production Environments**
+- **Multi-Server Backup**: Different configs for multiple VPS
+- **Scheduled Backups**: Cron jobs with different monitoring intervals
+- **High-Traffic Monitoring**: Real-time bandwidth tracking during peak hours
+- **Load Balancer Setups**: Monitor multiple network interfaces on LB servers
+
+### **🧪 Development & Testing**  
+- **Container Environments**: Proper filtering of Docker/LXC interfaces
+- **CI/CD Integration**: Automated backup testing with `config_test.yaml`
+- **Network Debugging**: Interface detection and bandwidth analysis
+- **Multi-Interface Testing**: VMs with multiple NICs
+
+### **☁️ Cloud VPS Scenarios**
+- **AWS EC2**: Multiple ENIs (Elastic Network Interfaces)
+- **DigitalOcean Droplets**: Private networking + public interfaces  
+- **Linode VPS**: VLAN + public interfaces
+- **Vultr Instances**: Multiple IP addresses and interfaces
+
+### **🌐 Edge & IoT Deployments**
+- **Edge Servers**: WiFi + Ethernet failover monitoring
+- **IoT Gateways**: Multiple connection types (4G, WiFi, Ethernet)
+- **Remote Locations**: Satellite + terrestrial backup connections
+
+## 🔍 Advanced Features
+
+### **🎛️ Monitoring Customization**
+```yaml
+# Fine-tune monitoring behavior
+monitoring_interval: 5              # Check every 5 seconds
+enable_bandwidth_monitoring: true   # Enable/disable monitoring
+```
+
+### **⚡ Performance Tuning**
+```yaml
+threads: 8          # Parallel backup threads (CPU cores * 2)
+bwlimit: 10000      # Limit to 10MB/s (10000 KB/s)
+chunk_size: 1000    # Files per chunk (auto-calculated if not set)
+```
+
+### **🔧 Advanced Rsync Options**
+```yaml
+rsync_opts:
+  - --archive                    # Standard backup options
+  - --compress                   # Compression during transfer
+  - --delete                     # Mirror mode (delete extra files)
+  - --progress                   # Show progress
+  - --exclude=*.tmp             # Exclude temporary files
+  - --exclude=node_modules/     # Exclude node_modules
+  - --bandwidth-limit=10M       # Alternative bandwidth limiting
+```
+
+### **📊 Custom Monitoring Thresholds**
+Tool automatically warns when:
+- **Download** > 100 MB/s (total across all interfaces)
+- **Upload** > 50 MB/s (total across all interfaces)  
+- **Per-interface** > 50 MB/s download or > 10 MB/s upload
+
+## 🐛 Troubleshooting
+
+### **🔑 SSH Issues**
+```bash
+# Test SSH connection
+./test_ssh.sh config.yaml
+
+# Common fixes:
+chmod 600 /path/to/ssh/key          # Fix key permissions
+ssh-copy-id -i key user@host        # Copy public key to VPS
+ssh -i key -p port user@host        # Manual connection test
+```
+
+### **🌐 Network Interface Issues**
+```bash
+# Test interface detection
+python3 test_multi_interface.py config.yaml
+
+# Check what interfaces exist on VPS
+ssh user@host "ip addr show"
+ssh user@host "cat /proc/net/dev"
+```
+
+### **📊 Bandwidth Monitoring Issues**
+```bash
+# Quick bandwidth test
+python3 quick_bandwidth.py config.yaml
+
+# Demo with mock data (if SSH fails)
+python3 demo_multi_interface.py
+
+# Check VPS network status
+ssh user@host "iftop -t -s 10"      # If iftop is installed
+```
+
+### **💾 Backup Issues**
+```bash
+# Test with smaller directory first
+python3 main.py config_test.yaml
+
+# Check disk space
+df -h ./backup_data                 # Local space
+ssh user@host "df -h /"            # Remote space
+
+# Check rsync connectivity
+rsync --version                     # Check rsync is installed
+```
+
+### **🔧 Permission Issues**
+```bash
+# Fix script permissions
 chmod +x *.sh
 
-# Tạo config từ templates
-cp config.yaml.template config.yaml
-cp config_test.yaml.template config_test.yaml
+# Check SSH key permissions  
+ls -la /path/to/ssh/key            # Should be 600
 
-# Edit với thông tin VPS của bạn
+# Check VPS directory permissions
+ssh user@host "ls -la /path/to/backup/dir"
+```
+
+## 📈 Performance Tips
+
+### **🚀 Speed Optimization**
+1. **Increase threads**: `threads: 16` (but don't exceed CPU cores * 4)
+2. **Use compression**: Include `--compress` in rsync_opts
+3. **Exclude unnecessary files**: Add `--exclude` patterns
+4. **Local SSD storage**: Use fast local disk for backup_data
+5. **Network optimization**: Check if VPS has multiple interfaces for load balancing
+
+### **💰 Bandwidth Management**
+1. **Set bandwidth limits**: `bwlimit: 5000` (5MB/s) for shared hosting
+2. **Monitor during off-peak**: Run backups during low-traffic hours
+3. **Use monitoring intervals**: `monitoring_interval: 30` for less overhead
+4. **Graduated backup**: Start with small directories, scale up
+
+### **🔒 Security Best Practices**
+1. **SSH Key Authentication**: Never use password auth for automated backups
+2. **Restricted SSH Keys**: Use keys with limited command access if possible  
+3. **Config Security**: Never commit real configs to git (templates only)
+4. **Network Security**: Use VPN if backing up over public internet
+5. **Encryption**: Consider encrypting backup_data locally
+
+## 🤝 Contributing
+
+### **🐛 Bug Reports**
+- Use GitHub Issues with detailed error messages
+- Include config (with sensitive data removed)
+- Provide VPS environment details (OS, network setup)
+
+### **✨ Feature Requests**  
+- Describe use case and expected behavior
+- Check existing issues for similar requests
+- Consider submitting a PR if you can implement it
+
+### **🔧 Development Setup**
+```bash
+git clone git@github.com:kh1119/vps-backup-tool.git
+cd vps-backup-tool
+./setup.sh
+# Make changes, test thoroughly
+git add . && git commit -m "feat: description"
+```
+
+## 📋 Requirements
+
+### **System Requirements**
+- **Python**: 3.7+ (3.8+ recommended)
+- **rsync**: Must be installed on both local and remote systems
+- **SSH**: Key-based authentication configured
+- **Disk Space**: Adequate space for backup data
+
+### **Supported Platforms**
+
+| Platform | Status | Setup Command |
+|----------|--------|---------------|
+| **Rocky Linux 8/9** | ✅ Full Support | `./setup_rocky.sh` |
+| **RHEL 8/9** | ✅ Full Support | `./setup_rocky.sh` |
+| **CentOS 8** | ✅ Full Support | `./setup_rocky.sh` |
+| **Ubuntu 20.04+** | ✅ Full Support | `./setup.sh` |
+| **Debian 11+** | ✅ Full Support | `./setup.sh` |
+| **macOS** | ✅ Full Support | `./setup.sh` |
+| **Windows** | ⚠️ WSL Only | `./setup.sh` (in WSL) |
+
+### **VPS Requirements**
+- **Linux-based VPS** (any distribution)
+- **SSH access** with key authentication
+- **rsync installed** on VPS
+- **Network interfaces** accessible via `/proc/net/dev`
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🏷️ Version History
+
+- **v1.4.0** (2025-06-21): Multi-Interface Bandwidth Monitoring
+- **v1.0.0** (2025-06-21): Initial Release
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
+---
+
+## 🎉 Ready to Start?
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/kh1119/vps-backup-tool.git
+cd vps-backup-tool && ./setup.sh
+
+# 2. Configure  
 nano config.yaml
+
+# 3. Test connection
+./test_ssh.sh config.yaml
+
+# 4. Start backup!
+./backup_with_monitoring.sh
 ```
 
-## Cấu hình
+**🎯 Perfect for VPS environments with multiple network interfaces!**
 
-Chỉnh sửa `config.yaml`:
+---
 
-```yaml
-# SSH & đường dẫn
-ssh_user: root
-ssh_host: your_vps_ip
-ssh_port: 22
-ssh_key: /path/to/your/ssh/key
-
-# Thư mục
-remote_root: /home          # Sẽ backup /home/* vào backup_data/* (không tạo backup_data/home/)
-local_root: ./backup_data   # Local destination
-
-# Performance
-threads: 8
-bwlimit: 0  # KB/s limit (0 = unlimited)
-
-# Bandwidth monitoring
-enable_bandwidth_monitoring: true
-monitoring_interval: 10  # giây
-```
-
-**⚠️ Lưu ý quan trọng về paths:**
-- `remote_root: /home` sẽ backup nội dung `/home/*` vào `backup_data/*`
-- KHÔNG tạo `backup_data/home/` (tránh duplicate paths)
-- Ví dụ: `/home/user/file.txt` → `backup_data/user/file.txt`
-
-## Sử dụng
-
-### 1. Script tương tác (Khuyến nghị)
-
-```bash
-./backup_with_monitoring.sh [config_file]
-```
-
-Menu sẽ hiện ra:
-1. Quick bandwidth check - Kiểm tra băng thông nhanh
-2. Start backup with monitoring - Bắt đầu backup với monitoring
-3. Monitor bandwidth only - Chỉ monitor băng thông 
-4. Show help - Hiển thị trợ giúp
-
-### 2. Chạy trực tiếp
-
-```bash
-# Backup với monitoring tích hợp
-python3 main.py [config_file]
-
-# Kiểm tra băng thông nhanh
-python3 quick_bandwidth.py [config_file]
-
-# Monitor băng thông liên tục
-python3 monitor_bandwidth.py [config_file] monitor [duration] [interval]
-```
-
-### 3. Shell script truyền thống
-
-```bash
-./run_backup.sh  # Sử dụng config.yaml mặc định
-```
-
-## Output mẫu
-
-```
-🔍 Bandwidth monitoring started for 192.168.1.100 (interval: 10s)
-🚀 Starting backup with 8 threads...
-📂 Remote: root@192.168.1.100:/home
-📁 Local: ./backup_data
-================================================================================
-[17:34:27] 📡 eth0: ⬇️ 45.2 MB/s | ⬆️ 2.1 MB/s
-[17:34:37] 📡 eth0: ⬇️ 52.8 MB/s | ⬆️ 1.8 MB/s
-Chunk 1: ✅ OK
-Chunk 2: ✅ OK
-[17:34:47] 📡 eth0: ⬇️ 48.9 MB/s | ⬆️ 2.3 MB/s
-Chunk 3: ✅ OK
-================================================================================
-✅ Backup complete! 8/8 chunks successful
-📊 Current bandwidth: ⬇️ 25.4 MB/s | ⬆️ 1.2 MB/s
-💡 Consider running final mirror rsync if desired.
-
-📊 Max bandwidth observed: ⬇️ 52.8 MB/s | ⬆️ 2.3 MB/s
-```
-
-## Cảnh báo băng thông
-
-Script sẽ tự động cảnh báo khi:
-- Download > 50 MB/s: `⚠️ HIGH DOWNLOAD TRAFFIC!`
-- Upload > 10 MB/s: `⚠️ HIGH UPLOAD TRAFFIC!`
-
-## Security
-
-⚠️ **QUAN TRỌNG**: File `config.yaml` chứa thông tin nhạy cảm và đã được thêm vào `.gitignore`
-
-- SSH keys không được commit vào repository
-- File config thật không được push lên Git
-- Sử dụng `config.yaml.template` làm mẫu
-- Kiểm tra `.gitignore` trước khi commit
-
-## Files Structure
-
-```
-├── main.py                      # Script backup chính với monitoring
-├── monitor_bandwidth.py         # Tool monitor standalone  
-├── quick_bandwidth.py          # Kiểm tra băng thông nhanh
-├── backup_with_monitoring.sh   # Script tương tác
-├── run_backup.sh              # Script backup truyền thống
-├── setup.sh                   # Auto setup script
-├── config.yaml.template       # Template cấu hình chính
-├── config_test.yaml.template  # Template cấu hình test
-├── requirements.txt          # Python dependencies
-├── README.md                # Tài liệu này
-├── LICENSE                  # MIT License
-├── CHANGELOG.md            # Lịch sử thay đổi
-└── .gitignore              # Git ignore rules
-```
-
-**⚠️ Files không có trong repo (được tạo từ templates):**
-```
-├── config.yaml             # Config thật (tạo từ template)
-├── config_test.yaml       # Config test thật (tạo từ template)
-├── backup_data/           # Dữ liệu backup
-├── logs/                  # Log files
-└── tmp/                   # Temporary files
-```
-
-## Troubleshooting
-
-1. **Lỗi SSH**: Kiểm tra ssh_key, ssh_host, ssh_port
-2. **Lỗi rsync**: Kiểm tra rsync_opts trong config
-3. **Monitoring không hoạt động**: Đặt `enable_bandwidth_monitoring: false`
-4. **Slow performance**: Giảm `threads` hoặc tăng `bwlimit`
-
-## Tips
-
-- Sử dụng `config_test.yaml` để test trước khi backup full
-- Monitor băng thông trước khi backup để biết baseline
-- Backup trong giờ thấp điểm để tránh ảnh hưởng người dùng
-- Kiểm tra disk space trước khi backup lớn
-# vps-backup-tool
+Made with ❤️ for the VPS backup community. [Star us on GitHub!](https://github.com/kh1119/vps-backup-tool) ⭐
