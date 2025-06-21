@@ -1,0 +1,28 @@
+# SSH & đường dẫn
+ssh_user: root
+ssh_host: 184.164.80.58        # IP hoặc hostname VPS cũ
+ssh_port: 1022                  # Cổng SSH (mặc định là 22)
+ssh_key: /Users/kth/.ssh/vps_sync_key
+
+# Thư mục gốc - test với thư mục nhỏ hơn
+remote_root: /etc/ssh
+local_root: ./backup_data
+
+# Hiệu năng
+threads: 2                   # giảm xuống 2 threads cho test
+bwlimit: 0                   # KB/s limit (0 = không giới hạn)
+
+# Thư mục tạm và log
+tmp_dir: tmp
+log_dir: logs
+
+# Bandwidth monitoring
+enable_bandwidth_monitoring: true    # Bật/tắt monitoring băng thông
+monitoring_interval: 5               # Kiểm tra băng thông mỗi 5 giây (nhanh hơn cho test)
+
+# Tùy chọn rsync
+rsync_opts:
+  - --archive
+  - --compress
+  - --delete
+  - --progress

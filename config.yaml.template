@@ -1,0 +1,28 @@
+# SSH & đường dẫn
+ssh_user: your_username           # SSH username
+ssh_host: your_vps_ip            # IP hoặc hostname VPS
+ssh_port: 22                     # Cổng SSH 
+ssh_key: /path/to/your/ssh/key   # Đường dẫn đến SSH private key
+
+# Thư mục gốc
+remote_root: /home               # Thư mục cần backup trên VPS
+local_root: ./backup_data        # Thư mục lưu backup local
+
+# Hiệu năng
+threads: 8                       # Số chunk song song
+bwlimit: 0                       # KB/s limit (0 = không giới hạn)
+
+# Thư mục tạm và log
+tmp_dir: tmp
+log_dir: logs
+
+# Bandwidth monitoring
+enable_bandwidth_monitoring: true    # Bật/tắt monitoring băng thông
+monitoring_interval: 10              # Kiểm tra băng thông mỗi X giây
+
+# Tùy chọn rsync
+rsync_opts:
+  - --archive
+  - --compress
+  - --delete
+  - --progress
