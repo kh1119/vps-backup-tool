@@ -16,8 +16,8 @@ Tool backup dữ liệu từ VPS với tính năng monitor băng thông real-tim
 ## Quick Start
 
 ```bash
-# Clone repository
-git clone https://github.com/your-username/vps-backup-tool.git
+# Clone repository (HTTPS for public access)
+git clone https://github.com/kh1119/vps-backup-tool.git
 cd vps-backup-tool
 
 # Auto setup (tạo config từ templates)
@@ -33,6 +33,10 @@ python3 quick_bandwidth.py
 # Start backup with monitoring
 ./backup_with_monitoring.sh
 ```
+
+> **💡 Clone URLs:**
+> - ✅ **HTTPS** (public): `https://github.com/kh1119/vps-backup-tool.git`
+> - 🔑 **SSH** (for contributors): `git@github.com:kh1119/vps-backup-tool.git`
 
 ## Cài đặt thủ công
 

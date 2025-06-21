@@ -14,8 +14,8 @@
 ## Bước 2: Push code lên GitHub
 
 ```bash
-# Thêm GitHub remote (thay 'your-username' bằng username GitHub của bạn)
-git remote add origin https://github.com/your-username/vps-backup-tool.git
+# Thêm GitHub remote (thay 'kh1119' bằng username GitHub của bạn)
+git remote add origin https://github.com/kh1119/vps-backup-tool.git
 
 # Push main branch
 git push -u origin main
@@ -23,6 +23,20 @@ git push -u origin main
 # Push tags
 git push --tags
 ```
+
+## Clone URLs cho end users
+
+**Public repository có 2 cách clone:**
+
+```bash
+# ✅ HTTPS (recommended cho public repos) - Không cần SSH key
+git clone https://github.com/kh1119/vps-backup-tool.git
+
+# 🔑 SSH (cho contributors có SSH key setup)
+git clone git@github.com:kh1119/vps-backup-tool.git
+```
+
+> **💡 Tip:** HTTPS URL dễ sử dụng hơn cho public repos vì không cần setup SSH keys
 
 ## Bước 3: Cập nhật README
 
