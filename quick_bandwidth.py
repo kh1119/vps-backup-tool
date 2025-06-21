@@ -77,37 +77,60 @@ def quick_check(cfg):
         print("❌ Cannot get network stats")
         return
     
-    # Tìm interface chính
-    main_interface = None
-    max_traffic = 0
+    interfaces_data = {}
+    total_download = 0
+    total_upload = 0
     
     for interface in stats1:
         if interface in stats2:
-            total_traffic = (stats2[interface]['rx_bytes'] + stats2[interface]['tx_bytes']) - \
-                          (stats1[interface]['rx_bytes'] + stats1[interface]['tx_bytes'])
-            if total_traffic > max_traffic:
-                max_traffic = total_traffic
-                main_interface = interface
+            rx_diff = (stats2[interface]['rx_bytes'] - stats1[interface]['rx_bytes']) / 2
+            tx_diff = (stats2[interface]['tx_bytes'] - stats1[interface]['tx_bytes']) / 2
+            
+            total_rx_gb = stats2[interface]['rx_bytes'] / 1024 / 1024 / 1024
+            total_tx_gb = stats2[interface]['tx_bytes'] / 1024 / 1024 / 1024
+            
+            interfaces_data[interface] = {
+                'download_bps': rx_diff,
+                'upload_bps': tx_diff,
+                'total_rx_gb': total_rx_gb,
+                'total_tx_gb': total_tx_gb
+            }
+            
+            total_download += rx_diff
+            total_upload += tx_diff
     
-    if main_interface:
-        rx_diff = (stats2[main_interface]['rx_bytes'] - stats1[main_interface]['rx_bytes']) / 2
-        tx_diff = (stats2[main_interface]['tx_bytes'] - stats1[main_interface]['tx_bytes']) / 2
+    # Hiển thị tổng bandwidth
+    print(f"📊 Total Bandwidth: ⬇️ {format_bytes(total_download)} | ⬆️ {format_bytes(total_upload)}")
+    print(f"📈 Active Interfaces: {len([i for i, d in interfaces_data.items() if d['download_bps'] > 0 or d['upload_bps'] > 0])}")
+    
+    # Hiển thị từng interface
+    print(f"\n🔌 Interface Details:")
+    active_interfaces = [(iface, data) for iface, data in interfaces_data.items()]
+    
+    # Sắp xếp theo total traffic
+    active_interfaces.sort(key=lambda x: x[1]['download_bps'] + x[1]['upload_bps'], reverse=True)
+    
+    for iface, data in active_interfaces:
+        download_speed = format_bytes(data['download_bps'])
+        upload_speed = format_bytes(data['upload_bps'])
         
-        total_rx_gb = stats2[main_interface]['rx_bytes'] / 1024 / 1024 / 1024
-        total_tx_gb = stats2[main_interface]['tx_bytes'] / 1024 / 1024 / 1024
+        status = ""
+        if data['download_bps'] > 50 * 1024 * 1024:  # > 50MB/s
+            status += " ⚠️ HIGH DOWNLOAD"
+        if data['upload_bps'] > 10 * 1024 * 1024:  # > 10MB/s
+            status += " ⚠️ HIGH UPLOAD"
         
-        print(f"🔌 Interface: {main_interface}")
-        print(f"⬇️  Download: {format_bytes(rx_diff)}")
-        print(f"⬆️  Upload: {format_bytes(tx_diff)}")
-        print(f"📊 Total: ⬇️ {total_rx_gb:.2f}GB | ⬆️ {total_tx_gb:.2f}GB")
-        
-        # Cảnh báo nếu băng thông cao
-        if rx_diff > 50 * 1024 * 1024:  # > 50MB/s
-            print("⚠️  HIGH DOWNLOAD TRAFFIC!")
-        if tx_diff > 10 * 1024 * 1024:  # > 10MB/s
-            print("⚠️  HIGH UPLOAD TRAFFIC!")
-    else:
-        print("❌ No active network interface found")
+        print(f"   {iface}: ⬇️ {download_speed} | ⬆️ {upload_speed}")
+        print(f"             Total: ⬇️ {data['total_rx_gb']:.2f}GB | ⬆️ {data['total_tx_gb']:.2f}GB{status}")
+    
+    # Cảnh báo tổng băng thông
+    if total_download > 100 * 1024 * 1024:  # > 100MB/s total
+        print(f"\n⚠️  VERY HIGH TOTAL DOWNLOAD TRAFFIC!")
+    elif total_download > 50 * 1024 * 1024:  # > 50MB/s total
+        print(f"\n⚠️  HIGH TOTAL DOWNLOAD TRAFFIC!")
+    
+    if total_upload > 20 * 1024 * 1024:  # > 20MB/s total
+        print(f"\n⚠️  HIGH TOTAL UPLOAD TRAFFIC!")
 
 def main():
     config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"

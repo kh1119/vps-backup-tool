@@ -45,16 +45,22 @@ def get_network_stats(cfg):
             parts = line.split(':')
             interface = parts[0].strip()
             
-            # Skip loopback and docker interfaces
-            if interface in ['lo'] or interface.startswith('docker'):
+            # Skip virtual/container interfaces
+            skip_patterns = ['lo', 'docker', 'br-', 'veth', 'virbr', 'tun', 'tap']
+            if any(interface.startswith(pattern) for pattern in skip_patterns):
                 continue
                 
             data = parts[1].split()
             if len(data) >= 16:
-                stats[interface] = {
-                    'rx_bytes': int(data[0]),
-                    'tx_bytes': int(data[8])
-                }
+                try:
+                    stats[interface] = {
+                        'rx_bytes': int(data[0]),
+                        'tx_bytes': int(data[8]),
+                        'rx_packets': int(data[1]),
+                        'tx_packets': int(data[9])
+                    }
+                except (ValueError, IndexError):
+                    continue  # Skip malformed data
     
     return stats
 
@@ -67,7 +73,7 @@ def format_bytes(bytes_val):
     return f"{bytes_val:.1f} TB/s"
 
 def get_bandwidth_usage(cfg):
-    """Lấy thông tin sử dụng băng thông hiện tại"""
+    """Lấy thông tin sử dụng băng thông hiện tại cho tất cả interfaces"""
     stats1 = get_network_stats(cfg)
     if not stats1:
         return None
@@ -78,29 +84,44 @@ def get_bandwidth_usage(cfg):
     if not stats2:
         return None
     
-    # Tìm interface chính
-    main_interface = None
+    interfaces_data = {}
+    total_download = 0
+    total_upload = 0
+    
     for interface in stats1:
-        if interface in stats2 and interface.startswith(('eth', 'ens', 'enp')):
-            main_interface = interface
-            break
+        if interface in stats2:
+            rx_diff = stats2[interface]['rx_bytes'] - stats1[interface]['rx_bytes']
+            tx_diff = stats2[interface]['tx_bytes'] - stats1[interface]['tx_bytes']
+            
+            # Lưu tất cả interfaces, kể cả không có traffic
+            interfaces_data[interface] = {
+                'download_bps': max(0, rx_diff),  # Đảm bảo không âm
+                'upload_bps': max(0, tx_diff),
+                'total_rx_gb': stats2[interface]['rx_bytes'] / 1024 / 1024 / 1024,
+                'total_tx_gb': stats2[interface]['tx_bytes'] / 1024 / 1024 / 1024,
+                'is_active': rx_diff > 0 or tx_diff > 0
+            }
+            
+            total_download += max(0, rx_diff)
+            total_upload += max(0, tx_diff)
     
-    if not main_interface and stats1:
-        for interface in stats1:
-            if interface in stats2:
-                main_interface = interface
-                break
-    
-    if main_interface and main_interface in stats2:
-        rx_diff = stats2[main_interface]['rx_bytes'] - stats1[main_interface]['rx_bytes']
-        tx_diff = stats2[main_interface]['tx_bytes'] - stats1[main_interface]['tx_bytes']
+    if interfaces_data:
+        # Tìm interface có traffic cao nhất
+        active_interfaces = {k: v for k, v in interfaces_data.items() if v['is_active']}
+        main_interface = None
+        
+        if active_interfaces:
+            main_interface = max(active_interfaces.keys(), 
+                               key=lambda x: active_interfaces[x]['download_bps'] + active_interfaces[x]['upload_bps'])
         
         return {
-            'interface': main_interface,
-            'download_bps': rx_diff,
-            'upload_bps': tx_diff,
-            'total_rx_gb': stats2[main_interface]['rx_bytes'] / 1024 / 1024 / 1024,
-            'total_tx_gb': stats2[main_interface]['tx_bytes'] / 1024 / 1024 / 1024
+            'interfaces': interfaces_data,
+            'active_interfaces': active_interfaces,
+            'main_interface': main_interface,
+            'total_download_bps': total_download,
+            'total_upload_bps': total_upload,
+            'interface_count': len(interfaces_data),
+            'active_count': len(active_interfaces)
         }
     
     return None
@@ -112,10 +133,11 @@ class BandwidthMonitor:
         self.interval = interval
         self.running = False
         self.thread = None
-        self.max_download = 0
-        self.max_upload = 0
-        self.current_download = 0
-        self.current_upload = 0
+        self.max_total_download = 0
+        self.max_total_upload = 0
+        self.current_total_download = 0
+        self.current_total_upload = 0
+        self.current_interfaces = {}
     
     def start(self):
         """Bắt đầu monitoring"""
@@ -132,7 +154,7 @@ class BandwidthMonitor:
         self.running = False
         if self.thread:
             self.thread.join(timeout=5)
-        print(f"\n📊 Max bandwidth observed: ⬇️ {format_bytes(self.max_download)} | ⬆️ {format_bytes(self.max_upload)}")
+        print(f"\n📊 Max total bandwidth observed: ⬇️ {format_bytes(self.max_total_download)} | ⬆️ {format_bytes(self.max_total_upload)}")
     
     def _monitor_loop(self):
         """Loop chính của monitoring"""
@@ -140,17 +162,42 @@ class BandwidthMonitor:
             try:
                 bandwidth = get_bandwidth_usage(self.cfg)
                 if bandwidth:
-                    self.current_download = bandwidth['download_bps']
-                    self.current_upload = bandwidth['upload_bps']
+                    self.current_total_download = bandwidth['total_download_bps']
+                    self.current_total_upload = bandwidth['total_upload_bps']
+                    self.current_interfaces = bandwidth['interfaces']
                     
-                    self.max_download = max(self.max_download, self.current_download)
-                    self.max_upload = max(self.max_upload, self.current_upload)
+                    self.max_total_download = max(self.max_total_download, self.current_total_download)
+                    self.max_total_upload = max(self.max_total_upload, self.current_total_upload)
                     
                     timestamp = datetime.now().strftime("%H:%M:%S")
-                    download_str = format_bytes(self.current_download)
-                    upload_str = format_bytes(self.current_upload)
                     
-                    print(f"[{timestamp}] 📡 {bandwidth['interface']}: ⬇️ {download_str} | ⬆️ {upload_str}")
+                    # Hiển thị tổng bandwidth
+                    total_down = format_bytes(self.current_total_download)
+                    total_up = format_bytes(self.current_total_upload)
+                    interface_info = f"({bandwidth['active_count']}/{bandwidth['interface_count']} active)"
+                    print(f"[{timestamp}] 📊 Total: ⬇️ {total_down} | ⬆️ {total_up} {interface_info}")
+                    
+                    # Hiển thị interfaces có traffic cao
+                    active_interfaces = [(iface, data) for iface, data in bandwidth['active_interfaces'].items()]
+                    
+                    if active_interfaces:
+                        if len(active_interfaces) > 1:
+                            print(f"         Active interfaces:")
+                            for iface, data in sorted(active_interfaces, 
+                                                    key=lambda x: x[1]['download_bps'] + x[1]['upload_bps'], 
+                                                    reverse=True)[:3]:  # Top 3
+                                down = format_bytes(data['download_bps'])
+                                up = format_bytes(data['upload_bps'])
+                                print(f"           {iface}: ⬇️ {down} | ⬆️ {up}")
+                        elif bandwidth['main_interface']:
+                            # Chỉ có 1 interface active, hiển thị tên
+                            print(f"         Main interface: {bandwidth['main_interface']}")
+                    
+                    # Cảnh báo nếu traffic cao
+                    if self.current_total_download > 100 * 1024 * 1024:  # > 100MB/s
+                        print(f"         ⚠️  HIGH DOWNLOAD TRAFFIC!")
+                    if self.current_total_upload > 50 * 1024 * 1024:  # > 50MB/s
+                        print(f"         ⚠️  HIGH UPLOAD TRAFFIC!")
                 
                 time.sleep(self.interval)
             except Exception as e:
@@ -278,7 +325,9 @@ def main():
         print(f"✅ Backup complete! {success_count}/{total_count} chunks successful")
         
         if monitor:
-            print(f"📊 Current bandwidth: ⬇️ {format_bytes(monitor.current_download)} | ⬆️ {format_bytes(monitor.current_upload)}")
+            print(f"📊 Current total bandwidth: ⬇️ {format_bytes(monitor.current_total_download)} | ⬆️ {format_bytes(monitor.current_total_upload)}")
+            if monitor.current_interfaces:
+                print(f"📡 Active interfaces: {len(monitor.current_interfaces)}")
         
         print("💡 Consider running final mirror rsync if desired.")
         
