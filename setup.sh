@@ -14,17 +14,77 @@ fi
 
 echo "✅ Python3 found: $(python3 --version)"
 
-# Kiểm tra pip
-if ! command -v pip3 &> /dev/null; then
-    echo "❌ pip3 is required but not installed"
-    exit 1
+# Kiểm tra và cài đặt pip
+PIP_CMD=""
+if command -v pip3 &> /dev/null; then
+    PIP_CMD="pip3"
+    echo "✅ pip3 found"
+elif command -v pip &> /dev/null; then
+    PIP_CMD="pip"
+    echo "✅ pip found"
+elif command -v python3 -m pip &> /dev/null; then
+    PIP_CMD="python3 -m pip"
+    echo "✅ pip found via python3 -m pip"
+else
+    echo "❌ pip is not installed. Installing..."
+    
+    # Detect OS and install pip
+    if [[ -f /etc/redhat-release ]]; then
+        # RHEL/CentOS/Rocky/Fedora
+        echo "🔍 Detected Red Hat based system"
+        if command -v dnf &> /dev/null; then
+            echo "Installing python3-pip with dnf..."
+            if command -v sudo &> /dev/null; then
+                sudo dnf install -y python3-pip
+            else
+                echo "⚠️  Running as root, installing directly..."
+                dnf install -y python3-pip
+            fi
+        elif command -v yum &> /dev/null; then
+            echo "Installing python3-pip with yum..."
+            if command -v sudo &> /dev/null; then
+                sudo yum install -y python3-pip
+            else
+                echo "⚠️  Running as root, installing directly..."
+                yum install -y python3-pip
+            fi
+        fi
+        PIP_CMD="pip3"
+    elif [[ -f /etc/debian_version ]]; then
+        # Debian/Ubuntu
+        echo "🔍 Detected Debian based system"
+        if command -v sudo &> /dev/null; then
+            sudo apt update && sudo apt install -y python3-pip
+        else
+            echo "⚠️  Running as root, installing directly..."
+            apt update && apt install -y python3-pip
+        fi
+        PIP_CMD="pip3"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        if command -v brew &> /dev/null; then
+            brew install python3
+        else
+            echo "Please install pip3 manually or install Homebrew first"
+            exit 1
+        fi
+        PIP_CMD="pip3"
+    else
+        echo "❌ Unsupported OS. Please install pip3 manually"
+        exit 1
+    fi
+    
+    # Verify installation
+    if ! command -v $PIP_CMD &> /dev/null; then
+        echo "❌ Failed to install pip3"
+        exit 1
+    fi
+    echo "✅ pip3 installed successfully"
 fi
-
-echo "✅ pip3 found"
 
 # Cài đặt dependencies
 echo "📦 Installing Python dependencies..."
-pip3 install -r requirements.txt
+$PIP_CMD install -r requirements.txt
 
 # Cấp quyền thực thi
 echo "🔐 Setting executable permissions..."

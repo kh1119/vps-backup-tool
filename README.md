@@ -1,4 +1,47 @@
-# VPS Backup Tool với Bandwidth Monitoring
+# VPS Backup To## Quick Start
+
+### Universal Setup (All platforms)
+```bash
+# Clone repository (HTTPS for public access)
+git clone https://github.com/kh1119/vps-backup-tool.git
+cd vps-backup-tool
+
+# Auto setup (detects OS and installs dependencies)
+./setup.sh
+```
+
+### Rocky Linux / RHEL / CentOS specific
+```bash
+# For Rocky Linux users (faster setup)
+./setup_rocky.sh
+```
+
+### Manual setup for any platform
+```bash
+# Install pip3 first:
+# Rocky/RHEL/CentOS: dnf install python3-pip
+# Debian/Ubuntu: apt install python3-pip  
+# macOS: brew install python3
+
+# Then setup
+pip3 install PyYAML
+chmod +x *.sh
+cp config.yaml.template config.yaml
+cp config_test.yaml.template config_test.yaml
+```
+
+### Configure and run
+```bash
+# Edit config với thông tin VPS của bạn
+nano config.yaml
+nano config_test.yaml  # Cho testing
+
+# Test connection
+python3 quick_bandwidth.py
+
+# Start backup with monitoring
+./backup_with_monitoring.sh
+```itoring
 
 Tool backup dữ liệu từ VPS với tính năng monitor băng thông real-time.
 

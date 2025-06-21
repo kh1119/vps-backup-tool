@@ -1,6 +1,35 @@
-# Tạo GitHub Repository
+# Tạo GitHub ## Bước 2: Push code lên GitHub
 
-## Bước 1: Tạo repo trên GitHub.com
+```bash
+# Thêm GitHub remote (thay 'your-username' bằng username GitHub của bạn)
+git remote add origin https://github.com/your-username/vps-backup-tool.git
+
+# Push main branch
+git push -u origin main
+
+# Push tags
+git push --tags
+```
+
+## Clone URLs
+
+Repository này là **public**, người dùng có thể clone bằng 2 cách:
+
+### ✅ HTTPS (Khuyến nghị cho public repos)
+```bash
+git clone https://github.com/your-username/vps-backup-tool.git
+```
+- Không cần SSH key
+- Hoạt động với mọi user
+- Phù hợp cho public repositories
+
+### SSH (Chỉ cho contributors có quyền write)
+```bash
+git clone git@github.com:your-username/vps-backup-tool.git
+```
+- Cần SSH key được setup
+- Chỉ cho những ai có quyền push
+- Dùng cho development## Bước 1: Tạo repo trên GitHub.com
 
 1. Đi đến https://github.com/new
 2. Repository name: `vps-backup-tool`
