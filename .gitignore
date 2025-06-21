@@ -93,8 +93,11 @@ htmlcov/
 
 # Local development
 .local/
+backup_old_version/
+scripts/
 local_*
 test_*
 debug_*
 config.yaml
 config_test.yaml
+migrate.sh

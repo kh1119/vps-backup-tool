@@ -1,0 +1,97 @@
+# VPS Backup Tool Configuration
+# Chỉnh sửa các thông số dưới đây theo môi trường của bạn
+
+# SSH Connection Settings
+ssh_user: root                           # SSH username
+ssh_host: YOUR_VPS_IP                    # IP hoặc hostname VPS
+ssh_port: 22                             # Cổng SSH (mặc định: 22)
+ssh_key: ~/.ssh/id_rsa                   # Đường dẫn đến SSH private key
+
+# Backup Paths
+remote_root: /home                       # Thư mục cần backup trên VPS
+local_root: ./backup_data                # Thư mục lưu backup local
+
+# Performance Settings
+threads: 8                               # Số chunk song song (khuyến nghị: số CPU cores)
+bwlimit: 0                              # KB/s limit (0 = không giới hạn)
+
+# Working Directories
+tmp_dir: tmp                            # Thư mục tạm
+log_dir: logs                           # Thư mục log
+
+# Bandwidth Monitoring
+enable_bandwidth_monitoring: true        # Bật/tắt monitoring băng thông
+monitoring_interval: 10                  # Kiểm tra băng thông mỗi X giây
+
+# Screen Session Settings
+screen_session_prefix: backup            # Prefix cho screen sessions
+auto_create_screen: true                 # Tự động tạo screen session cho long-running tasks
+
+# Rsync Options
+rsync_opts:
+  - --archive                           # Preserve attributes, permissions, timestamps
+  - --compress                          # Nén dữ liệu trong quá trình transfer
+  - --delete                            # Xóa files không tồn tại ở source
+  - --progress                          # Hiển thị progress
+  - --human-readable                    # Hiển thị kích thước dễ đọc
+  - --itemize-changes                   # Hiển thị chi tiết thay đổi
+
+# Backup Types Configuration
+backup_types:
+  quick:
+    description: "Quick backup for testing"
+    include_patterns: []
+    exclude_patterns:
+      - "*.log"
+      - "*.tmp"
+      - "cache/*"
+    max_size: "1GB"
+    
+  full:
+    description: "Full production backup"
+    include_patterns: []
+    exclude_patterns:
+      - "*.log"
+      - "tmp/*"
+      - "cache/*"
+      - "node_modules/*"
+    max_size: "unlimited"
+    
+  longterm:
+    description: "Long-term backup (multi-day)"
+    include_patterns: []
+    exclude_patterns:
+      - "*.log"
+      - "tmp/*"
+      - "cache/*"
+    max_size: "unlimited"
+    enable_compression: true
+    enable_incremental: true
+
+# Notification Settings (optional)
+notifications:
+  enable: false
+  email:
+    smtp_server: ""
+    smtp_port: 587
+    username: ""
+    password: ""
+    from_email: ""
+    to_email: ""
+  slack:
+    webhook_url: ""
+    channel: "#backups"
+
+# Advanced Settings
+advanced:
+  ssh_timeout: 30                       # SSH timeout in seconds
+  rsync_timeout: 3600                   # Rsync timeout in seconds
+  retry_count: 3                        # Number of retries for failed operations
+  retry_delay: 5                        # Delay between retries in seconds
+  
+# Security Settings
+security:
+  verify_host_key: true                 # Verify SSH host key
+  use_ssh_agent: true                   # Use SSH agent if available
+  encrypted_backup: false               # Enable backup encryption (requires gpg)
+  encryption_key: ""                    # GPG key ID for encryption
