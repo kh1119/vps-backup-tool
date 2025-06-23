@@ -75,6 +75,8 @@ class BackupApplication:
         print(" 10) 🔍 Test SSH Connection")
         print(" 11) 📡 Test Network Interfaces")
         print(" 12) 🖥️  System Information")
+        print(" 13) 📋 View Backup Logs")
+        print(" 14) 🔍 Debug Backup Status")
         
         print("\n 0) 🚪 Exit")
         print("\n" + "=" * 80)
@@ -106,7 +108,11 @@ class BackupApplication:
                 self.test_network_interfaces()
             elif choice == '12':
                 self.show_system_info()
-            elif choice == '0':
+            elif choice == '13':
+                self.view_backup_logs()
+            elif choice == '14':
+                self.debug_backup_status()
+            elif choice in ['q', 'Q', '0']:
                 return False
             else:
                 print_warning("Invalid choice. Please try again.")
@@ -286,193 +292,215 @@ class BackupApplication:
             print(f"  {i}) {session['name']} ({session['pid']}) - {session['status'].title()}")
             
         try:
-            choice = input("\nEnter session number to stop: ").strip()
-            
+            choice = input("\nEnter session number to stop: ")
             if choice.isdigit():
-                idx = int(choice) - 1
-                if 0 <= idx < len(sessions):
-                    session = sessions[idx]
-                    
-                    if confirm_action(f"Stop session '{session['name']}'?"):
-                        success, message = self.screen_manager.kill_session(session['name'])
-                        if success:
-                            print_success(message)
-                        else:
-                            print_error(message)
+                session_idx = int(choice) - 1
+                if 0 <= session_idx < len(sessions):
+                    session_name = sessions[session_idx]['name']
+                    if self.screen_manager.stop_session(session_name):
+                        print_success(f"Session '{session_name}' stopped successfully")
+                    else:
+                        print_error(f"Failed to stop session '{session_name}'")
                 else:
                     print_error("Invalid session number")
             else:
                 print_error("Please enter a valid number")
-                
-        except ValueError:
-            print_error("Invalid input")
+        except KeyboardInterrupt:
+            print_info("\nOperation cancelled")
+        except Exception as e:
+            print_error(f"Error stopping session: {e}")
             
-    def cleanup_sessions(self):
-        """Cleanup dead screen sessions"""
-        print_section("CLEANUP DEAD SESSIONS")
+        input("\nPress Enter to continue...")
         
-        if confirm_action("Clean up all dead screen sessions?"):
-            count, cleaned = self.screen_manager.cleanup_dead_sessions()
-            
-            if count > 0:
-                print_success(f"Cleaned up {count} dead sessions:")
-                for session in cleaned:
-                    print(f"  - {session}")
-            else:
-                print_info("No dead sessions found to clean up")
-                
-    def show_configuration(self):
-        """Show current configuration"""
-        print_section("CONFIGURATION")
+    def view_backup_logs(self):
+        """Xem log backup local trên VPS này"""
+        print_section("BACKUP LOGS")
         
-        # Connection info
-        print("🔗 Connection:")
-        print(f"  Host: {self.config['ssh_user']}@{self.config['ssh_host']}:{self.config['ssh_port']}")
-        print(f"  SSH Key: {self.config['ssh_key']}")
+        log_dir = Path(self.config.get('log_dir', 'logs'))
         
-        # Paths
-        print("\n📂 Paths:")
-        print(f"  Remote: {self.config['remote_root']}")
-        print(f"  Local: {self.config['local_root']}")
-        print(f"  Temp: {self.config.get('tmp_dir', 'tmp')}")
-        print(f"  Logs: {self.config.get('log_dir', 'logs')}")
-        
-        # Performance
-        print("\n⚡ Performance:")
-        print(f"  Threads: {self.config.get('threads', 4)}")
-        print(f"  Bandwidth Limit: {self.config.get('bwlimit', 0)} KB/s")
-        print(f"  Monitoring Interval: {self.config.get('monitoring_interval', 10)}s")
-        
-        # Rsync options
-        print("\n🔧 Rsync Options:")
-        for opt in self.config.get('rsync_opts', []):
-            print(f"  {opt}")
-            
-    def test_ssh_connection(self):
-        """Test SSH connection"""
-        print_section("SSH CONNECTION TEST")
-        
-        print_info("Testing SSH connection...")
-        success, message = self.ssh_manager.test_connection()
-        
-        if success:
-            print_success(message)
-            
-            # Get remote info
-            print_info("Getting remote system information...")
-            info = self.ssh_manager.get_remote_info()
-            
-            print("\n🖥️  Remote System Info:")
-            for key, value in info.items():
-                print(f"  {key.title()}: {value}")
-                
-        else:
-            print_error(message)
-            
-    def test_network_interfaces(self):
-        """Test network interfaces"""
-        print_section("NETWORK INTERFACE TEST")
-        
-        monitor = NetworkInterfaceMonitor(self.ssh_manager)
-        
-        print_info("Testing network interfaces...")
-        result = monitor.test_interfaces()
-        
-        if result['test_successful']:
-            print_success("Network interface test completed successfully")
-            
-            print(f"\n📡 Found {result['total_interfaces']} network interfaces:")
-            for interface in result['interfaces_found']:
-                print(f"  - {interface}")
-                
-            if result['active_interfaces']:
-                print(f"\n⚡ Active interfaces ({len(result['active_interfaces'])}):")
-                for interface in result['active_interfaces']:
-                    print(f"  - {interface}")
-            else:
-                print("\nℹ️  No active traffic detected during test")
-                
-            if 'bandwidth_data' in result:
-                bandwidth = result['bandwidth_data']
-                print(f"\n📊 Current bandwidth:")
-                print(f"  Download: {format_bytes(bandwidth['total_download_bps'])}/s")
-                print(f"  Upload: {format_bytes(bandwidth['total_upload_bps'])}/s")
-                
-        else:
-            print_error("Network interface test failed")
-            if 'error' in result:
-                print_error(result['error'])
-                
-    def show_system_info(self):
-        """Show system information"""
-        print_section("SYSTEM INFORMATION")
-        
-        # Local system info
-        import platform
-        print("💻 Local System:")
-        print(f"  OS: {platform.system()} {platform.release()}")
-        print(f"  Python: {platform.python_version()}")
-        print(f"  Architecture: {platform.machine()}")
-        
-        # Remote system info
-        print("\n🖥️  Remote System:")
-        success, message = self.ssh_manager.test_connection()
-        
-        if success:
-            info = self.ssh_manager.get_remote_info()
-            for key, value in info.items():
-                if not value.startswith("Error"):
-                    print(f"  {key.title()}: {value}")
-        else:
-            print_error(f"Cannot connect to remote system: {message}")
-            
-        # Configuration paths
-        print("\n📂 Paths:")
-        for path_name, path_value in [
-            ("Config Dir", self.config_manager.config_dir),
-            ("Local Root", self.config['local_root']),
-            ("Temp Dir", self.config.get('tmp_dir', 'tmp')),
-            ("Log Dir", self.config.get('log_dir', 'logs'))
-        ]:
-            path_obj = Path(path_value)
-            exists = "✅" if path_obj.exists() else "❌"
-            print(f"  {path_name}: {path_value} {exists}")
-            
-    def run(self):
-        """Main application loop"""
-        if not self.initialize():
-            print_error("Failed to initialize application")
+        if not log_dir.exists():
+            print_error("Log directory not found!")
             return
             
-        try:
-            while True:
-                self.show_main_menu()
-                
-                try:
-                    choice = input("Enter your choice: ").strip()
-                    print()  # Add spacing
-                    
-                    if not self.handle_menu_choice(choice):
-                        break
-                        
-                except KeyboardInterrupt:
-                    print("\n\n👋 Goodbye!")
-                    break
-                    
-                # Wait for user input before showing menu again
-                if choice != '0':
-                    input("\nPress Enter to continue...")
-                    print("\n" * 2)  # Clear screen a bit
-                    
-        except Exception as e:
-            print_error(f"Application error: {e}")
+        # List all log files
+        log_files = list(log_dir.glob("*.log"))
+        
+        if not log_files:
+            print_info("No log files found")
+            return
             
-        print("\n👋 Thank you for using VPS Backup Tool!")
+        # Sort by modification time (newest first)
+        log_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        
+        print("📋 Available log files:")
+        headers = ["#", "File", "Size", "Modified"]
+        rows = []
+        
+        for i, log_file in enumerate(log_files, 1):
+            stat = log_file.stat()
+            size = format_bytes(stat.st_size)
+            modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+            rows.append([str(i), log_file.name, size, modified])
+            
+        print_table(headers, rows)
+        
+        try:
+            choice = input("\nEnter log file number to view (or 'latest' for most recent): ").strip()
+            
+            if choice.lower() == 'latest':
+                selected_file = log_files[0]
+            elif choice.isdigit():
+                idx = int(choice) - 1
+                if 0 <= idx < len(log_files):
+                    selected_file = log_files[idx]
+                else:
+                    print_error("Invalid file number")
+                    return
+            else:
+                print_error("Invalid choice")
+                return
+                
+            print_section(f"LOG: {selected_file.name}")
+            
+            # Show last 50 lines
+            try:
+                with open(selected_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    
+                if len(lines) > 50:
+                    print_info(f"Showing last 50 lines of {len(lines)} total lines")
+                    print_info("Use 'tail -f' command to follow log in real-time")
+                    print("-" * 80)
+                    for line in lines[-50:]:
+                        print(line.rstrip())
+                else:
+                    print_info(f"Showing all {len(lines)} lines")
+                    print("-" * 80)
+                    for line in lines:
+                        print(line.rstrip())
+                        
+            except Exception as e:
+                print_error(f"Error reading log file: {e}")
+                
+        except KeyboardInterrupt:
+            print_info("\nOperation cancelled")
+        except Exception as e:
+            print_error(f"Error: {e}")
+            
+    def debug_backup_status(self):
+        """Debug trạng thái backup trên VPS này"""
+        print_section("BACKUP STATUS DEBUG")
+        
+        # System info
+        print("🖥️  System Information:")
+        import platform, psutil, os
+        print(f"  Hostname: {platform.node()}")
+        print(f"  OS: {platform.system()} {platform.release()}")
+        print(f"  Python: {platform.python_version()}")
+        print(f"  CPU Usage: {psutil.cpu_percent(interval=1):.1f}%")
+        print(f"  Memory: {psutil.virtual_memory().percent:.1f}% used")
+        print(f"  Disk: {psutil.disk_usage('.').percent:.1f}% used")
+        
+        # Screen sessions
+        print("\n📺 Screen Sessions:")
+        sessions = self.screen_manager.list_sessions()
+        if sessions:
+            for session in sessions:
+                status_color = Colors.GREEN if session['status'] == 'detached' else Colors.YELLOW
+                status_text = Colors.colored(session['status'].title(), status_color)
+                session_type = "Backup" if session['is_backup_session'] else "Other"
+                print(f"  - {session['name']} ({session['pid']}) - {status_text} [{session_type}]")
+        else:
+            print("  No screen sessions found")
+            
+        # Running processes
+        print("\n🔄 Backup Related Processes:")
+        backup_processes = []
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent', 'memory_percent']):
+            try:
+                cmdline = ' '.join(proc.info['cmdline']) if proc.info['cmdline'] else proc.info['name']
+                if any(keyword in cmdline.lower() for keyword in ['backup', 'rsync', 'python.*backup']):
+                    backup_processes.append(proc.info)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+                
+        if backup_processes:
+            for proc in backup_processes:
+                cmdline = ' '.join(proc['cmdline']) if proc['cmdline'] else proc['name']
+                print(f"  PID {proc['pid']}: {cmdline[:80]}...")
+                print(f"    CPU: {proc['cpu_percent']:.1f}%, Memory: {proc['memory_percent']:.1f}%")
+        else:
+            print("  No backup processes running")
+            
+        # Directory status
+        print("\n📂 Directory Status:")
+        directories = [
+            ("logs", self.config.get('log_dir', 'logs')),
+            ("tmp", self.config.get('tmp_dir', 'tmp')),
+            ("backup_data", self.config.get('local_root', 'backup_data')),
+            ("configs", "configs")
+        ]
+        
+        for name, path in directories:
+            path_obj = Path(path)
+            if path_obj.exists():
+                if path_obj.is_dir():
+                    file_count = len(list(path_obj.iterdir()))
+                    try:
+                        size = sum(f.stat().st_size for f in path_obj.rglob('*') if f.is_file())
+                        size_str = format_bytes(size)
+                    except:
+                        size_str = "Unknown"
+                    print(f"  ✅ {name}: {file_count} items, {size_str}")
+                else:
+                    print(f"  ⚠️  {name}: exists but not a directory")
+            else:
+                print(f"  ❌ {name}: not found")
+                
+        # Recent log files
+        print("\n📋 Recent Log Activity:")
+        log_dir = Path(self.config.get('log_dir', 'logs'))
+        if log_dir.exists():
+            recent_logs = sorted(log_dir.glob("*.log"), key=lambda x: x.stat().st_mtime, reverse=True)[:5]
+            if recent_logs:
+                for log_file in recent_logs:
+                    stat = log_file.stat()
+                    modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                    size = format_bytes(stat.st_size)
+                    print(f"  - {log_file.name}: {size}, modified {modified}")
+            else:
+                print("  No log files found")
+        else:
+            print("  Log directory not found")
+            
+        # Chunk status
+        print("\n📦 Chunk Status:")
+        tmp_dir = Path(self.config.get('tmp_dir', 'tmp'))
+        if tmp_dir.exists():
+            chunk_files = list(tmp_dir.glob("chunk_*.txt"))
+            if chunk_files:
+                print(f"  Found {len(chunk_files)} chunk files")
+                chunk_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                for chunk_file in chunk_files[:3]:  # Show latest 3
+                    stat = chunk_file.stat()
+                    modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                    size = format_bytes(stat.st_size)
+                    print(f"    - {chunk_file.name}: {size}, modified {modified}")
+            else:
+                print("  No chunk files found")
+        else:
+            print("  Temp directory not found")
+            
+        # SSH connection test
+        print("\n🔗 SSH Connection Test:")
+        try:
+            success, message = self.ssh_manager.test_connection()
+            if success:
+                print_success(f"  {message}")
+            else:
+                print_error(f"  {message}")
+        except Exception as e:
+            print_error(f"  Connection test failed: {e}")
+            
+        print("\n" + "=" * 80)
 
-def main():
-    """Entry point for the application"""
-    app = BackupApplication()
-    app.run()
-
-if __name__ == '__main__':
-    main()

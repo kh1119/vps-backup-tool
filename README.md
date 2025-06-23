@@ -85,6 +85,8 @@ bwlimit: 0  # KB/s (0 = unlimited)
  10) 🔍 Test SSH Connection
  11) 📡 Test Network Interfaces
  12) 🖥️ System Information
+ 13) 📋 View Remote Backup Logs
+ 14) 🔍 Debug Remote Backup Status
 ```
 
 ## 📁 Cấu trúc dự án
@@ -268,3 +270,56 @@ Nếu bạn đang sử dụng version cũ:
 ## 📜 License
 
 MIT License - See LICENSE file for details.
+
+## 🔍 Debugging & Monitoring trên VPS
+
+### Xem log backup từ xa
+Khi chạy backup trên VPS, bạn có thể xem log từ máy local:
+
+1. **Từ menu chính**: Chọn option `13) 📋 View Remote Backup Logs`
+2. **Script nhanh**:
+   ```bash
+   ./view_remote_logs.sh
+   # hoặc với config file khác
+   ./view_remote_logs.sh configs/production.yaml
+   ```
+
+### Debug trạng thái backup từ xa
+Để kiểm tra toàn diện trạng thái backup trên VPS:
+
+1. **Từ menu chính**: Chọn option `14) 🔍 Debug Remote Backup Status`
+2. **Script nhanh**:
+   ```bash
+   ./debug_remote_backup.sh
+   ```
+
+### Debug script sẽ kiểm tra:
+- ✅ System info (OS, uptime, load, memory, disk)
+- ✅ Screen sessions đang chạy
+- ✅ Python/rsync processes
+- ✅ Backup directory status
+- ✅ Log files và errors
+- ✅ Network interfaces
+- ✅ Top processes (CPU/Memory)
+- ✅ Chunk files status
+- ✅ Screen session output capture
+
+### Khi Long-term backup bị dừng sớm:
+1. Chạy `./debug_remote_backup.sh` để kiểm tra:
+   - Memory usage (có thể bị out of memory)
+   - Disk space (có thể đầy ổ cứng)
+   - Screen session còn sống không
+   - Có process backup nào đang chạy không
+   - Log file có error gì không
+
+2. Xem log chi tiết:
+   ```bash
+   ./view_remote_logs.sh
+   ```
+
+3. Nếu cần, attach vào screen session:
+   ```bash
+   ssh user@vps
+   screen -ls  # xem sessions
+   screen -r session_name  # attach vào session
+   ```

@@ -84,19 +84,21 @@ class BackupEngine:
                         
         return chunks
         
-    def rsync_chunk(self, chunk_path: str, chunk_idx: int) -> Tuple[bool, str]:
-        """Execute rsync for a specific chunk"""
+    def rsync_chunk(self, chunk_path: str, chunk_idx: int, retry_count: int = 0) -> Tuple[bool, str]:
+        """Execute rsync for a specific chunk with retry logic"""
         log_path = Path(self.config.get('log_dir', 'logs')) / f'chunk_{chunk_idx+1}.log'
         
-        # Build rsync command
-        ssh_cmd = f"ssh -i {Path(self.config['ssh_key']).expanduser()} -p {self.config.get('ssh_port', 22)}"
+        # Build rsync command with better timeout handling
+        ssh_cmd = f"ssh -i {Path(self.config['ssh_key']).expanduser()} -p {self.config.get('ssh_port', 22)} -o ConnectTimeout=30 -o ServerAliveInterval=60"
         remote_root = self.config['remote_root'].rstrip('/') + '/'
         
         rsync_cmd = [
             'rsync',
             f"--files-from={chunk_path}",
             '-e', ssh_cmd,
-            f"--bwlimit={self.config.get('bwlimit', 0)}"
+            f"--bwlimit={self.config.get('bwlimit', 0)}",
+            '--timeout=300',  # 5 minute timeout per file
+            '--contimeout=60'  # 1 minute connection timeout
         ]
         
         # Add rsync options
@@ -109,24 +111,71 @@ class BackupEngine:
             self.config['local_root']
         ])
         
-        try:
-            with open(log_path, 'w') as log_file:
-                result = subprocess.run(
-                    rsync_cmd,
-                    stdout=log_file,
-                    stderr=subprocess.STDOUT,
-                    timeout=self.config.get('rsync_timeout', 3600)
-                )
-                
-            return result.returncode == 0, str(log_path)
+        max_retries = self.config.get('retry_count', 3)
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # Log attempt
+                mode = 'a' if attempt > 0 else 'w'
+                with open(log_path, mode) as log_file:
+                    if attempt > 0:
+                        log_file.write(f"\n=== RETRY ATTEMPT {attempt}/{max_retries} ===\n")
+                        
+                    log_file.write(f"Command: {' '.join(rsync_cmd)}\n")
+                    log_file.write(f"Started: {datetime.now()}\n")
+                    log_file.flush()
+                    
+                    # Set longer timeout for long-term backups
+                    timeout = self.config.get('rsync_timeout', 7200)  # 2 hours default
+                    if hasattr(self, 'backup_type') and 'longterm' in str(getattr(self, 'backup_type', '')):
+                        timeout = 14400  # 4 hours for longterm
+                    
+                    result = subprocess.run(
+                        rsync_cmd,
+                        stdout=log_file,
+                        stderr=subprocess.STDOUT,
+                        timeout=timeout
+                    )
+                    
+                    log_file.write(f"\nFinished: {datetime.now()}\n")
+                    log_file.write(f"Return code: {result.returncode}\n")
+                    
+                if result.returncode == 0:
+                    return True, str(log_path)
+                elif attempt < max_retries:
+                    print(f"   Chunk {chunk_idx+1}: ⚠️ Failed (attempt {attempt+1}), retrying...")
+                    import time
+                    time.sleep(self.config.get('retry_delay', 10))  # Wait before retry
+                    continue
+                else:
+                    return False, f"Failed after {max_retries} retries: {log_path}"
+                    
+            except subprocess.TimeoutExpired:
+                if attempt < max_retries:
+                    print(f"   Chunk {chunk_idx+1}: ⏰ Timeout (attempt {attempt+1}), retrying...")
+                    with open(log_path, 'a') as log_file:
+                        log_file.write(f"\nTIMEOUT at: {datetime.now()}\n")
+                    import time
+                    time.sleep(self.config.get('retry_delay', 10))
+                    continue
+                else:
+                    return False, f"Timeout after {max_retries} retries: {log_path}"
+            except Exception as e:
+                if attempt < max_retries:
+                    print(f"   Chunk {chunk_idx+1}: ❌ Error (attempt {attempt+1}), retrying...")
+                    with open(log_path, 'a') as log_file:
+                        log_file.write(f"\nERROR at: {datetime.now()}: {str(e)}\n")
+                    import time
+                    time.sleep(self.config.get('retry_delay', 10))
+                    continue
+                else:
+                    return False, f"Error after {max_retries} retries: {str(e)}"
+                    
+        return False, f"Unexpected failure: {log_path}"
             
-        except subprocess.TimeoutExpired:
-            return False, f"Timeout: {log_path}"
-        except Exception as e:
-            return False, f"Error: {e}"
-            
-    def run_backup(self, backup_type: str = 'full', use_monitoring: bool = True) -> Dict[str, Any]:
+    def run_backup(self, backup_type: str = 'full', use_monitoring: bool = True, log_file: str = None) -> Dict[str, Any]:
         """Run the main backup process"""
+        self.backup_type = backup_type  # Store for timeout logic
         start_time = datetime.now()
         
         print(f"🚀 Starting {backup_type} backup...")
@@ -135,21 +184,35 @@ class BackupEngine:
         print(f"🧵 Threads: {self.config.get('threads', 4)}")
         print("=" * 80)
         
+        # Enhanced logging
+        def log_message(message: str):
+            print(message)
+            if log_file:
+                with open(log_file, 'a') as f:
+                    f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
+                    f.flush()
+        
         # Start bandwidth monitoring
         if use_monitoring and self.config.get('enable_bandwidth_monitoring', True):
             self.start_bandwidth_monitoring()
             
         try:
             # Build file list
-            print("📋 Building file list from remote server...")
+            log_message("📋 Building file list from remote server...")
             all_files = self.build_file_list()
             
+            # Count total files
+            with open(all_files) as f:
+                total_files = sum(1 for line in f if line.strip())
+            log_message(f"� Found {total_files:,} files to process")
+            
             # Chunk files
-            print("🔀 Creating file chunks for parallel processing...")
+            log_message("�🔀 Creating file chunks for parallel processing...")
             chunks = self.chunk_file_list(all_files)
+            log_message(f"📦 Created {len(chunks)} chunks for processing")
             
             # Execute rsync in parallel
-            print(f"🔄 Starting rsync with {len(chunks)} chunks...")
+            log_message(f"🔄 Starting rsync with {len(chunks)} chunks...")
             results = {}
             
             with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
@@ -158,6 +221,7 @@ class BackupEngine:
                     for i in range(len(chunks))
                 }
                 
+                completed = 0
                 for future in as_completed(futures):
                     chunk_idx = futures[future]
                     success, log_info = future.result()
@@ -166,23 +230,46 @@ class BackupEngine:
                         'log': log_info
                     }
                     
+                    completed += 1
                     status = "✅ OK" if success else "❌ FAILED"
-                    print(f"Chunk {chunk_idx+1}: {status}")
+                    progress_msg = f"Chunk {chunk_idx+1}: {status} [{completed}/{len(chunks)}]"
+                    log_message(progress_msg)
                     
-            # Retry failed chunks
+            # Retry failed chunks with more aggressive retry
             failed_chunks = [idx for idx, result in results.items() if not result['success']]
             
             if failed_chunks:
-                print(f"\n🔄 Retrying {len(failed_chunks)} failed chunks...")
-                for idx in failed_chunks:
-                    success, log_info = self.rsync_chunk(chunks[idx], idx)
-                    results[idx] = {
-                        'success': success,
-                        'log': log_info
-                    }
+                log_message(f"\n🔄 Retrying {len(failed_chunks)} failed chunks...")
+                
+                # Multiple retry rounds for persistent failures
+                max_retry_rounds = 3
+                for retry_round in range(max_retry_rounds):
+                    if not failed_chunks:
+                        break
+                        
+                    log_message(f"🔄 Retry round {retry_round + 1}/{max_retry_rounds}")
                     
-                    status = "✅ OK" if success else "❌ FAILED"
-                    print(f"Chunk {idx+1} retry: {status}")
+                    current_failed = failed_chunks.copy()
+                    failed_chunks = []
+                    
+                    for idx in current_failed:
+                        success, log_info = self.rsync_chunk(chunks[idx], idx, retry_count=retry_round)
+                        results[idx] = {
+                            'success': success,
+                            'log': log_info
+                        }
+                        
+                        status = "✅ OK" if success else "❌ FAILED"
+                        log_message(f"Chunk {idx+1} retry: {status}")
+                        
+                        if not success:
+                            failed_chunks.append(idx)
+                            
+                    # Wait between retry rounds
+                    if failed_chunks and retry_round < max_retry_rounds - 1:
+                        import time
+                        log_message("⏳ Waiting 30 seconds before next retry round...")
+                        time.sleep(30)
                     
             # Calculate results
             success_count = sum(1 for result in results.values() if result['success'])

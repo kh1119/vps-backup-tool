@@ -51,14 +51,17 @@ class ScreenManager:
         return [s for s in all_sessions if s['is_backup_session']]
         
     def create_session(self, name: str, command: str = None) -> Tuple[bool, str]:
-        """Create a new screen session"""
+        """Create a new screen session with enhanced stability"""
         session_name = f"{self.session_prefix}_{name}"
         
         try:
             if command:
-                # Create session and run command
+                # Create session and run command with better error handling
+                # Use bash -l to ensure proper environment
+                wrapped_command = f"bash -l -c '{command}; echo \"\\n\\n=== BACKUP COMPLETED ===\\n\"; echo \"Press Ctrl+A then D to detach, or type exit to close\"; exec bash'"
+                
                 result = subprocess.run([
-                    'screen', '-dmS', session_name, 'bash', '-c', command
+                    'screen', '-dmS', session_name, 'bash', '-c', wrapped_command
                 ], capture_output=True, text=True)
             else:
                 # Create empty session
@@ -67,7 +70,17 @@ class ScreenManager:
                 ], capture_output=True, text=True)
                 
             if result.returncode == 0:
-                return True, f"Session '{session_name}' created successfully"
+                # Verify session was created
+                import time
+                time.sleep(1)  # Give screen time to initialize
+                
+                sessions = self.list_sessions()
+                session_exists = any(s['name'] == session_name for s in sessions)
+                
+                if session_exists:
+                    return True, f"Session '{session_name}' created successfully"
+                else:
+                    return False, f"Session creation appeared successful but session not found"
             else:
                 return False, f"Failed to create session: {result.stderr}"
                 

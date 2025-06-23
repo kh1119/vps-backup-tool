@@ -1,2 +1,3 @@
 PyYAML==6.0.1
 rich>=10.0.0
+psutil>=5.8.0

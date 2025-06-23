@@ -90,12 +90,32 @@ class BackupRunner:
             print(f"📁 Local: {config['local_root']}")
             print(f"🧵 Threads: {config.get('threads', 4)}")
             print(f"⏰ Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # Log to file for debugging
+            log_file = Path(config.get('log_dir', 'logs')) / f"{self.backup_type}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(log_file, 'w') as f:
+                f.write(f"Backup started at: {datetime.now()}\n")
+                f.write(f"Backup type: {self.backup_type}\n")
+                f.write(f"Remote: {config['ssh_user']}@{config['ssh_host']}:{config['remote_root']}\n")
+                f.write(f"Local: {config['local_root']}\n")
+                f.write(f"Threads: {config.get('threads', 4)}\n")
+                f.flush()
+                
+            print(f"📝 Logging to: {log_file}")
             print("=" * 80)
             
-            # Run backup
+            # Check if interrupted before starting
+            if self.interrupted:
+                print("⚠️  Backup was interrupted before starting")
+                return False
+            
+            # Run backup with enhanced error handling
             result = self.backup_engine.run_backup(
                 backup_type=self.backup_type,
-                use_monitoring=True
+                use_monitoring=True,
+                log_file=str(log_file)
             )
             
             # Print results
@@ -116,6 +136,15 @@ class BackupRunner:
             print(f"   Started: {result['start_time'].strftime('%Y-%m-%d %H:%M:%S')}")
             print(f"   Finished: {result['end_time'].strftime('%Y-%m-%d %H:%M:%S')}")
             
+            # Log final results
+            with open(log_file, 'a') as f:
+                f.write(f"\nBackup finished at: {datetime.now()}\n")
+                f.write(f"Success: {result['success']}\n")
+                f.write(f"Total chunks: {result['total_chunks']}\n")
+                f.write(f"Successful: {result['successful_chunks']}\n")
+                f.write(f"Failed: {result['failed_chunks']}\n")
+                f.write(f"Duration: {result['duration']}\n")
+            
             # Show failed chunks if any
             if result['failed_chunks'] > 0:
                 print(f"\n❌ Failed chunks:")
@@ -125,8 +154,16 @@ class BackupRunner:
                         
             print("\n💡 Tips:")
             print("   - Check log files for detailed information")
+            print(f"   - Main log: {log_file}")
             print("   - Run a final mirror rsync if needed")
             print("   - Consider running failed chunks manually")
+            
+            # Keep screen session alive for review
+            import os
+            if 'STY' in os.environ:
+                print(f"\n🖥️  Screen session will remain active for review")
+                print("   Detach with: Ctrl+A then D")
+                print("   Or exit with: exit")
             
             return result['success']
             
