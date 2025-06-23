@@ -38,9 +38,19 @@ class BackupEngine:
         """Build full file list from remote server"""
         tmp_all = Path(self.config.get('tmp_dir', 'tmp')) / 'all_files.txt'
         
+        # Get timeout from config
+        file_list_timeout = self.config.get('timeout', {}).get('file_list', 3600)  # Default 1 hour
+        
+        # For longterm backup, multiply timeout
+        if hasattr(self, 'backup_type') and self.backup_type == 'longterm':
+            multiplier = self.config.get('longterm', {}).get('timeout_multiplier', 10)
+            file_list_timeout *= multiplier
+        
+        print(f"📋 Building file list from remote server... (timeout: {file_list_timeout//60} minutes)")
+        
         # SSH command to find files
         find_cmd = f'find "{self.config["remote_root"]}" -type f'
-        success, stdout, stderr = self.ssh_manager.run_command(find_cmd)
+        success, stdout, stderr = self.ssh_manager.run_command(find_cmd, timeout=file_list_timeout)
         
         if not success:
             raise RuntimeError(f"Failed to build file list: {stderr}")
@@ -92,16 +102,20 @@ class BackupEngine:
         ssh_cmd = f"ssh -i {Path(self.config['ssh_key']).expanduser()} -p {self.config.get('ssh_port', 22)} -o ConnectTimeout=30 -o ServerAliveInterval=60"
         remote_root = self.config['remote_root'].rstrip('/') + '/'
         
+        # Get timeout for chunks from config
+        chunk_timeout = self.config.get('timeout', {}).get('rsync_chunk', 3600)
+        if hasattr(self, 'backup_type') and self.backup_type == 'longterm':
+            multiplier = self.config.get('longterm', {}).get('timeout_multiplier', 10)
+            chunk_timeout *= multiplier
+        
         rsync_cmd = [
             'rsync',
             f"--files-from={chunk_path}",
             '-e', ssh_cmd,
-            f"--bwlimit={self.config.get('bwlimit', 0)}",
-            '--timeout=300',  # 5 minute timeout per file
-            '--contimeout=60'  # 1 minute connection timeout
+            f"--bwlimit={self.config.get('bwlimit', 0)}"
         ]
         
-        # Add rsync options
+        # Add rsync options from config (they already include timeout)
         rsync_opts = self.config.get('rsync_opts', ['--archive', '--compress'])
         rsync_cmd.extend(rsync_opts)
         

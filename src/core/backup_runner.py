@@ -85,6 +85,9 @@ class BackupRunner:
             # Initialize backup engine
             self.backup_engine = BackupEngine(config)
             
+            # Set backup type for timeout handling
+            self.backup_engine.backup_type = self.backup_type
+            
             print(f"🚀 Starting {self.backup_type} backup...")
             print(f"📂 Remote: {config['ssh_user']}@{config['ssh_host']}:{config['remote_root']}")
             print(f"📁 Local: {config['local_root']}")
