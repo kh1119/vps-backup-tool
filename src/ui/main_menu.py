@@ -393,13 +393,33 @@ class BackupApplication:
         
         # System info
         print("🖥️  System Information:")
-        import platform, psutil, os
+        import platform, os
+        try:
+            import psutil
+            cpu_usage = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('.')
+        except ImportError:
+            print_warning("psutil not installed, limited system info available")
+            cpu_usage = memory = disk = None
+            
         print(f"  Hostname: {platform.node()}")
         print(f"  OS: {platform.system()} {platform.release()}")
         print(f"  Python: {platform.python_version()}")
-        print(f"  CPU Usage: {psutil.cpu_percent(interval=1):.1f}%")
-        print(f"  Memory: {psutil.virtual_memory().percent:.1f}% used")
-        print(f"  Disk: {psutil.disk_usage('.').percent:.1f}% used")
+        
+        if cpu_usage is not None:
+            print(f"  CPU Usage: {cpu_usage:.1f}%")
+            print(f"  Memory: {memory.percent:.1f}% used")
+            print(f"  Disk: {disk.percent:.1f}% used")
+        else:
+            # Fallback to basic commands
+            try:
+                import subprocess
+                uptime_result = subprocess.run(['uptime'], capture_output=True, text=True)
+                if uptime_result.returncode == 0:
+                    print(f"  Uptime: {uptime_result.stdout.strip()}")
+            except:
+                pass
         
         # Screen sessions
         print("\n📺 Screen Sessions:")
@@ -416,19 +436,36 @@ class BackupApplication:
         # Running processes
         print("\n🔄 Backup Related Processes:")
         backup_processes = []
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent', 'memory_percent']):
-            try:
-                cmdline = ' '.join(proc.info['cmdline']) if proc.info['cmdline'] else proc.info['name']
-                if any(keyword in cmdline.lower() for keyword in ['backup', 'rsync', 'python.*backup']):
-                    backup_processes.append(proc.info)
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
+        try:
+            if 'psutil' in globals():
+                for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent', 'memory_percent']):
+                    try:
+                        cmdline = ' '.join(proc.info['cmdline']) if proc.info['cmdline'] else proc.info['name']
+                        if any(keyword in cmdline.lower() for keyword in ['backup', 'rsync', 'python.*backup']):
+                            backup_processes.append(proc.info)
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+            else:
+                # Fallback to ps command
+                import subprocess
+                ps_result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
+                if ps_result.returncode == 0:
+                    for line in ps_result.stdout.split('\n'):
+                        if any(keyword in line.lower() for keyword in ['backup', 'rsync']):
+                            if 'grep' not in line.lower():
+                                backup_processes.append({'cmdline': line.strip()})
+        except Exception as e:
+            print_error(f"Error getting process info: {e}")
                 
         if backup_processes:
             for proc in backup_processes:
-                cmdline = ' '.join(proc['cmdline']) if proc['cmdline'] else proc['name']
-                print(f"  PID {proc['pid']}: {cmdline[:80]}...")
-                print(f"    CPU: {proc['cpu_percent']:.1f}%, Memory: {proc['memory_percent']:.1f}%")
+                if 'cmdline' in proc and isinstance(proc['cmdline'], str):
+                    print(f"  {proc['cmdline'][:80]}...")
+                else:
+                    cmdline = ' '.join(proc['cmdline']) if proc['cmdline'] else proc['name']
+                    print(f"  PID {proc['pid']}: {cmdline[:80]}...")
+                    if 'cpu_percent' in proc:
+                        print(f"    CPU: {proc['cpu_percent']:.1f}%, Memory: {proc['memory_percent']:.1f}%")
         else:
             print("  No backup processes running")
             
@@ -503,4 +540,43 @@ class BackupApplication:
             print_error(f"  Connection test failed: {e}")
             
         print("\n" + "=" * 80)
+        
+    def run(self):
+        """Main application loop"""
+        if not self.initialize():
+            print_error("Failed to initialize application")
+            return
+            
+        try:
+            while True:
+                self.show_main_menu()
+                
+                try:
+                    choice = input("Enter your choice: ").strip()
+                    print()  # Add spacing
+                    
+                    if not self.handle_menu_choice(choice):
+                        break
+                        
+                except KeyboardInterrupt:
+                    print("\n\n👋 Goodbye!")
+                    break
+                    
+                # Wait for user input before showing menu again
+                if choice != '0':
+                    input("\nPress Enter to continue...")
+                    print("\n" * 2)  # Clear screen a bit
+                    
+        except Exception as e:
+            print_error(f"Application error: {e}")
+            
+        print("\n👋 Thank you for using VPS Backup Tool!")
+
+def main():
+    """Entry point for the application"""
+    app = BackupApplication()
+    app.run()
+
+if __name__ == '__main__':
+    main()
 
